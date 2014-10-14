@@ -505,7 +505,7 @@ make_command_stream (int (*get_next_byte) (void *),
                                 } else if(popped_operator.value == THEN_OP) {
                                     struct command_node second_command = command_stack_pop(&comstack);
                                     struct command_node first_command  = command_stack_pop(&comstack);
-                                    struct command_node combined_command    = combine_two6_commands(first_command, second_command, IF_OP);
+                                    struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
                                     command_stacks_push(&comstack, combined_command);
                                     operator_stack_pop(&opstack); //should be popping IF_OP
                                 } else { // error 
