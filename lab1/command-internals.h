@@ -15,6 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+// Used for precedence 
+enum operator_type {
+  OPEN_PAREN_OP,
+  IF_OP,
+  THEN_OP,
+  ELSE_OP,
+  FI_OP,
+  SEMICOLON_OP,
+  NEWLINE_OP,
+  PIPE_OP,
+  CLOSE_PAREN_OP,
+};
+
 enum command_type
   {
     IF_COMMAND,		 // if A then B else C fi
