@@ -22,6 +22,7 @@
 #include <stdlib.h>  // for malloc/free
 #include <error.h>
 #include <ctype.h>   // for isalnum
+#include <string.h>  // for strcpy
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
@@ -29,7 +30,8 @@
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
 
-#define EXECUTION_STATUS -1;
+#define EXECUTION_STATUS -1
+#define WORD_BUF_SIZE 100
 
 enum Elements
 {
@@ -397,9 +399,11 @@ make_command_stream (int (*get_next_byte) (void *),
                         // process operator stack until reach preceding special word
                     }
                 }
-                words[number_of_words++] = word;
-                word = (char*) malloc(sizeof(word));
-                word[0] = '\0';
+                //words[number_of_words++] = word;
+                //word = (char*) malloc(sizeof(word));
+                //word[0] = '\0';
+                strcpy(words[number_of_words++], word);  // copy word into words[pos]
+                memset(word, 0, sizeof(word));           // 'reset' word by reinitializing all elements to 0
             }
             if (c == '#')
             {
@@ -417,13 +421,13 @@ make_command_stream (int (*get_next_byte) (void *),
                 node->command->status = EXECUTION_STATUS;
                 node->command->input = NULL;
                 node->command->output = NULL;
-                node->command->word = words;
+                node->command->u.word = words;  // might not work. Might need to do a form of memcpy instead.
                 // node->command->u.command[0] = NULL;
-                command_stack_push(&comstack, node);
+                command_stack_push(&comstack, *node);
                 
                 // reset
                 node = (command_node_t) malloc(sizeof(struct command_node));
-                words = (char**) malloc(sizeof(words));
+                words = (char**) malloc(sizeof(words)); // No good solution yet. 
                 number_of_words = 0;
             }
             if (c == ';' || c == '|')
@@ -459,7 +463,7 @@ make_command_stream (int (*get_next_byte) (void *),
             if (is_operator)
             {
                 // get operator type from operator string
-                char *operator_string = &c;
+                char *operator_string = 0;
                 int operator_type = get_operator_type(operator_string);  //operator_string is made up
                 struct operator_node op_node;
                 
@@ -467,7 +471,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 
                 if(operator_stack_empty(&opstack)) {
                     operator_stack_push(&opstack, op_node);
-                } else if(operator_type > operator_stack_top(&opstack).value 
+                } else if(operator_type > operator_stack_top(&opstack)->value 
                             || operator_type == IF_OP) {
                     operator_stack_push(&opstack, op_node);
                 } else {
@@ -478,7 +482,9 @@ make_command_stream (int (*get_next_byte) (void *),
                                 struct operator_node popped_operator = operator_stack_pop(&opstack);
                                 struct command_node second_command   = command_stack_pop(&comstack);
                                 struct command_node first_command    = command_stack_pop(&comstack);
-                                struct command_node new_command = combine_two_commands(first_command, second_command, popped_operator);
+                                struct command_node combined_command = combine_two_commands(first_command, second_command, popped_operator.value);
+                                
+                                command_stack_push(&comstack, combined_command);
                                 
                                 opstack_top = operator_stack_top(&opstack);
                                 if(opstack_top == NULL)
@@ -487,20 +493,22 @@ make_command_stream (int (*get_next_byte) (void *),
                             operator_stack_push(&opstack, op_node);
                             if(operator_stack_top(&opstack)->value == FI_OP) {
                                 operator_stack_pop(&opstack);  // don't need FI_OP
-                                opstack_top = operator_stack_pop(&opstack);
-                                if(opstack_top == ELSE_OP) {
+                                struct operator_node popped_operator = operator_stack_pop(&opstack);
+                                if(popped_operator.value == ELSE_OP) {
                                     struct command_node third_command  = command_stack_pop(&comstack);
                                     struct command_node second_command = command_stack_pop(&comstack);
                                     struct command_node first_command  = command_stack_pop(&comstack);
-                                    struct command_node new_command    = combine_three_commands(first_command, second_command, third_command, ELSE_OP);
-                                    command_stack_push(new_command);
+                                    struct command_node combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
+                                    command_stack_push(&comstack, combined_command);
                                     operator_stack_pop(&opstack); //should be popping THEN_OP
                                     operator_stack_pop(&opstack); //should be popping IF_OP
-                                } else if(opstack_top == THEN_OP) {
+                                } else if(popped_operator.value == THEN_OP) {
                                     struct command_node second_command = command_stack_pop(&comstack);
                                     struct command_node first_command  = command_stack_pop(&comstack);
-                                    struct command_node new_command    = combine_three_commands(first_command, second_command, IF_OP);
+                                    struct command_node combined_command    = combine_three_commands(first_command, second_command, IF_OP);
+                                    command_stacks_push(&comstack, combined_command);
                                     operator_stack_pop(&opstack); //should be popping IF_OP
+                                } else { // error 
                                 }
                                 
                             }
