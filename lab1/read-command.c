@@ -33,8 +33,8 @@ enum Elements
 };
 
 typedef struct command_node   *command_node_t;
-// typedef struct command_stack  *command_stack_t;
-// typedef struct operator_stack *operator_stack_t;
+// typedef struct command_stack  command_stack_t;
+// typedef struct operator_stack operator_stack_t;
 
 struct command_node
 {
@@ -49,6 +49,116 @@ struct command_stream
 {
     command_node_t head;
 }
+
+struct command_stack {
+    struct command_node *top;
+    int size;
+};
+
+void init_command_stack(struct command_stack *stack) {
+    stack->top = NULL;
+    stack->size = 0;
+}
+
+// push node to top and increment size
+// returns void
+void command_stack_push(struct command_stack *stack, struct command_node node) {
+    if(stack->size == 0) {
+        stack->top = (struct command_node*)malloc(sizeof(struct command_node*));
+        stack->top->next = NULL;
+        stack->top->this_command = node.this_command;
+        stack->size++;
+    } else {
+        struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node*));
+        temp->this_command = node.this_command;
+        temp->next = stack->top;
+        stack->top = temp;
+        stack->size++;
+    }
+}
+
+// pop the top and decrement size
+// returns the popped top
+struct command_node command_stack_pop(struct command_stack *stack) {
+    struct command_node retval = *(stack->top);
+    struct command_node newtop = stack->top->next;
+    free(stack->top);
+    stack->top = newtop;
+    return retval;
+}
+
+// peeks the top
+// returns a pointer to the top node
+struct command_node *command_stack_top(struct command_stack *stack) {
+    return stack->top
+}
+
+// checks to see if stack is empty or not
+// if empty, returns true else false
+bool command_stack_empty(struct command_stack *stack) {
+    return stack->size == 0 ? true : false;
+}
+
+// returns size of command stack
+int command_stack_size(struct command_stack *stack) {
+    return stack->size;
+}
+
+struct operator_node {
+    int value;
+    struct operator_node* next;
+};
+
+struct operator_stack {
+    struct operator_node* top;
+    int size;
+};
+
+void init_operator_node(struct operator_node* node) {
+    node->next = NULL;
+}
+
+void init_operator_stack (struct operator_stack *stack) {
+    stack->top = NULL;
+    stack->size = 0;
+}
+
+void operator_stack_push( struct operator_stack *stack, struct operator_node node) {
+    if(stack->size == 0) {
+        stack->top = (struct operator_node*)malloc(sizeof(struct operator_node*));
+        stack->top->value = node->value;
+        stack->top->next = NULL;
+        stack->size++;
+    } else {
+        struct operator_node* temp = (struct operator_node*)malloc(sizeof(struct operator_node*));
+        temp->value = node->value;;
+        temp->next = stack->top;
+        stack->top = temp;
+        stack->size++;
+    }
+}
+
+struct operator_stack_pop(struct operator_stack *stack) {
+    struct operator_node retval = *(stack->top);
+    struct operator_node *temp = stack->top->next;
+    free(stack->top);
+    stack->top = temp;
+    return retval;
+}
+
+struct operator_node* operator_stack_top(struct operator_stack *stack) {
+    return stack->top;
+}
+
+bool operator_stack_empty(struct operator_stack *stack) {
+    return stack->size == 0 ? true : false;
+}
+
+int operator_stack_size(struct operator_stack * stack) {
+    return stack-size;
+}
+
+
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
@@ -153,48 +263,39 @@ make_command_stream (int (*get_next_byte) (void *),
                         // error
                 if (is_operator)
                 {
-                    // algorithm
+                    // if encounter new commands (simple command)
+                    //     put them on command stack
+                    // if encounter new operator
+                    //     if operator_stack == NULL
+                    //         Add new operator to operator stack
+                    //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
+                    //         Add new oparator to operator stack
+                    //     else
+                    //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
+                    //           {
+                    //             operator = operator-stack.pop()
+                    //             second-command = command-stack.pop()
+                    //             first-command = command-stack.pop()
+                    //             new-command = combine(first-command, second-command, operator)
+                    //             command-stack.push(new-command)
+                    //             top-operator = operator-stack.peek()
+                
+                    //             if top-operator == NULL
+                    //                 break;
+                    //           }
+                    //         operator-stack.push(new_operator)
+                    //         if(operator-stack.top == "fi")
+                    //             operator-stack.pop()
+                    //             if(operator-stack.top == "then")
+                    //                 pop and process twice
+                    //             else if(operator-stack.top == "else")
+                    //                 pop and process 3 times
                 }
             }
         }
 
         last_byte = c;
     }
-
-    // special operator cases:
-    // consecutive \n or ;
-    // ; not followed by command
-    // <> not followed by word, followed by multiple words
-
-    // Parse algorithm
-
-    // if encounter new commands (simple command)
-    //     put them on command stack
-    // if encounter new operator
-    //     if operator_stack == NULL
-    //         Add new operator to operator stack
-    //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
-    //         Add new oparator to operator stack
-    //     else
-    //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
-    //           {
-    //             operator = operator-stack.pop()
-    //             second-command = command-stack.pop()
-    //             first-command = command-stack.pop()
-    //             new-command = combine(first-command, second-command, operator)
-    //             command-stack.push(new-command)
-    //             top-operator = operator-stack.peek()
-
-    //             if top-operator == NULL
-    //                 break;
-    //           }
-    //         operator-stack.push(new_operator)
-    //         if(operator-stack.top == "fi")
-    //             operator-stack.pop()
-    //             if(operator-stack.top == "then")
-    //                 pop and process twice
-    //             else if(operator-stack.top == "else")
-    //                 pop and process 3 times
 
     return 0;
 }
