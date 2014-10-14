@@ -48,12 +48,12 @@ struct command_node
 {
     command_t      command; //lots of stuff is named command
     command_node_t next;
-}
+};
 
 struct command_stream
 {
     command_node_t head;
-}
+};
 
 struct command_stack {
     struct command_node *top;
@@ -85,8 +85,11 @@ void command_stack_push(struct command_stack *stack, struct command_node node) {
 // pop the top and decrement size
 // returns the popped top
 struct command_node command_stack_pop(struct command_stack *stack) {
-    struct command_node retval = *(stack->top);
-    struct command_node newtop = stack->top->next;
+    struct command_node retval; 
+    struct command_node newtop;
+    
+    retval = *(stack->top); 
+    newtop = stack->top->next;
     free(stack->top);
     stack->top = newtop;
     return retval;
