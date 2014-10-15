@@ -42,14 +42,12 @@ enum Elements
     REDIRECT
 };
 
+typedef struct command_node   *command_node_t;
+
 struct command_stream
 {
     command_node_t head;
 };
-
-typedef struct command_node   *command_node_t;
-// typedef struct command_stack  command_stack_t;
-// typedef struct operator_stack operator_stack_t;
 
 struct command_node
 {
@@ -59,8 +57,8 @@ struct command_node
 
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
-    node->next = (command_node_t) malloc(sizeof(struct node));
-    node->command = NULL:
+    node->next = (command_node_t) malloc(sizeof(struct command_node));
+    node->command = NULL;
     node->next = NULL;
 }
 
