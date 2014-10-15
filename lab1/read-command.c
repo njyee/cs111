@@ -221,21 +221,21 @@ int is_valid_character(char c) {
 }
 
 int get_operator_type(char *buf) {
-    if(strcmp(buf, "if")) {
+    if(!strcmp(buf, "if")) {
         return IF_OP;
-    } else if(strcmp(buf, "then")) {
+    } else if(!strcmp(buf, "then")) {
         return THEN_OP;
-    } else if(strcmp(buf, "else")) {
+    } else if(!strcmp(buf, "else")) {
         return ELSE_OP;
-    } else if(strcmp(buf, "then")) {
+    } else if(!strcmp(buf, "then")) {
         return THEN_OP;
-    } else if(strcmp(buf, "fi")) {
+    } else if(!strcmp(buf, "fi")) {
         return FI_OP;
-    } else if(strcmp(buf, ";")) {
+    } else if(!strcmp(buf, ";")) {
         return SEMICOLON_OP;
-    } else if(strcmp(buf, "\n")) {
+    } else if(!strcmp(buf, "\n")) {
         return NEWLINE_OP;
-    } else if(strcmp(buf, "|")) {
+    } else if(!strcmp(buf, "|")) {
         return PIPE_OP;
     } else
         return -1; // error: not an operator
@@ -399,12 +399,12 @@ make_command_stream (int (*get_next_byte) (void *),
                 //if (sizeof(words) == 0)
                 if(words[0] == 0)
                 {
-                    if (strcmp(word, "if") || strcmp(word, "until"))
+                    if (!strcmp(word, "if") || !strcmp(word, "until"))
                     {
                         // push onto operator stack
                     }
-                    else if (strcmp(word, "then") || strcmp(word, "else") || strcmp(word, "if") ||
-                             strcmp(word, "do") || strcmp(word, "done"))
+                    else if (!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "if") ||
+                             !strcmp(word, "do") || !strcmp(word, "done"))
                     {
                         // validate (scope stack?)
                         // process operator stack until reach preceding special word
