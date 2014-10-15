@@ -347,8 +347,9 @@ make_command_stream (int (*get_next_byte) (void *),
     int last_byte = 0;
     int number_of_words = 0;
     
-    char word[100];
+    //char word[100];
     //char* words[100];
+    char * word;
     char ** words;
     
     enum Elements follows;
@@ -364,8 +365,15 @@ make_command_stream (int (*get_next_byte) (void *),
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
     
+    // init word (set all bytes to \0)
+    word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+    memset(word, 0, WORD_BUF_SIZE);
+    
+    // init words (allocate and set items to null)
     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1);
     memset(words, 0, sizeof(words)); // init words elements to NULL
+    
+    // init node (allocate node and command)
     node = (command_node_t)malloc(sizeof(struct command_node));
     my_command = (command_t)malloc(sizeof(struct command));
     node->command = my_command;
@@ -413,11 +421,12 @@ make_command_stream (int (*get_next_byte) (void *),
                         // process operator stack until reach preceding special word
                     }
                 }
-                //words[number_of_words++] = word;
-                //word = (char*) malloc(sizeof(word));
+                // save word in words then reset
+                words[number_of_words++] = word;
+                word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
-                words[number_of_words] = (char*)malloc(sizeof(word));
-                strcpy(words[number_of_words++], word);  // copy word into words[pos]
+                //words[number_of_words] = (char*)malloc(sizeof(word));
+                //strcpy(words[number_of_words++], word);  // copy word into words[pos]
                 memset(word, 0, sizeof(word));           // 'reset' word by reinitializing all elements to 0
             }
             if (c == '#')
@@ -442,6 +451,8 @@ make_command_stream (int (*get_next_byte) (void *),
                 
                 // reset
                 node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
+                my_command = (command_t)malloc(sizeof(struct command));
+                node->command = my_command;
                 words = (char**) malloc(sizeof(words)); // No good solution yet. 
                 number_of_words = 0;
             }
@@ -478,7 +489,8 @@ make_command_stream (int (*get_next_byte) (void *),
             if (is_operator)
             {
                 // get operator type from operator string
-                char *operator_string = 0;
+                char *operator_string = (char*)malloc(sizeof(c));
+                strcpy(operator_string, c, sizeof(c));
                 int operator_type = get_operator_type(operator_string);  //operator_string is made up
                 struct operator_node op_node;
                 
