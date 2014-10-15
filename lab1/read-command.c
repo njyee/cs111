@@ -272,7 +272,7 @@ struct command_node combine_two_commands(struct command_node first_command, stru
     // declarations
     struct command_node new_command_node; 
     int command_type;
-    command_t first, second;
+    command_t first, second, new_command;
     
     // get command type from the operator type
     command_type = get_command_type(op);
@@ -280,6 +280,10 @@ struct command_node combine_two_commands(struct command_node first_command, stru
     // allocate memory for commands to be stored within new_command
     first  = (command_t)malloc(sizeof(struct command));
     second = (command_t)malloc(sizeof(struct command));
+    new_command = (command_t)malloc(sizeof(struct command));
+    
+    // associate new_command with new_command_node
+    new_command_node.command = new_command;
     
     *first  = *(first_command.command);
     *second = *(second_command.command);
@@ -315,6 +319,9 @@ struct command_node combine_three_commands(struct command_node first_command, st
     *first  = *(first_command.command);
     *second = *(second_command.command);
     *third  = *(third_command.command);
+    
+    // dynamically allocate a new command to house first, second, third
+    new_command_node.command = (command_t)malloc(sizeof(struct command));    
     
     // fill in command attributes
     new_command_node.command->type    = command_type;
@@ -385,6 +392,8 @@ make_command_stream (int (*get_next_byte) (void *),
 
         // get next byte
         c = get_next_byte(get_next_byte_argument);
+        if(c == EOF)
+            break;
         
         // if word char
         if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
@@ -421,14 +430,13 @@ make_command_stream (int (*get_next_byte) (void *),
                         // process operator stack until reach preceding special word
                     }
                 }
+                
                 // save word in words then reset
                 words[number_of_words++] = word;
                 word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
                 //words[number_of_words] = (char*)malloc(sizeof(word));
-                //strcpy(words[number_of_words++], word);  // copy word into words[pos]
-                memset(word, 0, sizeof(word));           // 'reset' word by reinitializing all elements to 0
-            }
+                //strcpy(words[number_of_words++], word);  // copy word into words[pos]            }
             if (c == '#')
             {
                 // ignore remaining characters until reach newline
