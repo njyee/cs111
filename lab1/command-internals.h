@@ -24,7 +24,7 @@ enum operator_type {
   DO_OP,
   THEN_OP,
   ELSE_OP,
-  DONE_OP
+  DONE_OP,
   FI_OP,
   SEMICOLON_OP,
   NEWLINE_OP,

@@ -670,10 +670,11 @@ make_command_stream (int (*get_next_byte) (void *),
         last_byte = c;
     }
     
-    while(!operator_stack_empty(&opstack))
-    {
-        // Do some processing if necessary. 
-    }
+    // commented out to not create infinite loop
+    // while(!operator_stack_empty(&opstack))
+    // {
+    //     // Do some processing if necessary. 
+    // }
 
     comstream.head = comstack.top;
     
