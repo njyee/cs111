@@ -354,6 +354,7 @@ make_command_stream (int (*get_next_byte) (void *),
     enum Elements follows;
     
     command_node_t node;
+    command_t my_command;
     
     struct operator_stack opstack;
     struct command_stack comstack;
@@ -366,7 +367,9 @@ make_command_stream (int (*get_next_byte) (void *),
     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1);
     memset(words, 0, sizeof(words)); // init words elements to NULL
     node = (command_node_t)malloc(sizeof(struct command_node));
-
+    my_command = (command_t)malloc(sizeof(struct command));
+    node->command = my_command;
+    
     for (;;)
     {
         // Reset
