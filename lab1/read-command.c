@@ -364,6 +364,8 @@ make_command_stream (int (*get_next_byte) (void *),
     init_command_stack(&comstack);
     
     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1);
+    memset(words, 0, sizeof(words)); // init words elements to NULL
+    node = (command_node_t)malloc(sizeof(struct command_node));
 
     for (;;)
     {
@@ -378,7 +380,8 @@ make_command_stream (int (*get_next_byte) (void *),
               c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' )
         {
             // if first char of first word and follows command
-            if (strlen(word) == 0 && sizeof(words) == 0 && follows == COMMAND)
+            //if (strlen(word) == 0 && sizeof(words) == 0 && follows == COMMAND)
+            if(strlen(word) == 0 && words[0] == 0 && follows == COMMAND)
             {
                 // error
                 ;
@@ -393,7 +396,8 @@ make_command_stream (int (*get_next_byte) (void *),
             if (strlen(word) > 0)
             {
                 // if first word
-                if (sizeof(words) == 0)
+                //if (sizeof(words) == 0)
+                if(words[0] == 0)
                 {
                     if (strcmp(word, "if") || strcmp(word, "until"))
                     {
