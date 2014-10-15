@@ -42,6 +42,11 @@ enum Elements
     REDIRECT
 };
 
+struct command_stream
+{
+    command_node_t head;
+};
+
 typedef struct command_node   *command_node_t;
 // typedef struct command_stack  command_stack_t;
 // typedef struct operator_stack operator_stack_t;
@@ -52,10 +57,12 @@ struct command_node
     command_node_t next;
 };
 
-struct command_stream
-{
-    command_node_t head;
-};
+void init_node(struct command_node * node) {
+    node->command = (command_t) malloc(sizeof(struct command));
+    node->next = (command_node_t) malloc(sizeof(struct node));
+    node->command = NULL:
+    node->next = NULL;
+}
 
 struct command_stack {
     struct command_node *top;
@@ -346,49 +353,57 @@ make_command_stream (int (*get_next_byte) (void *),
        add auxiliary functions and otherwise modify the source code.
        You can also use external functions defined in the GNU C Library.  */
 
-    int j;
-    size_t i;
+    // int j;
+    size_t i;  // index for appending character to word
 
-    char c = '\0';
-    int is_operator = 0;
+    char c = '\0';  // current byte
+    char r = '\0';  // redirect type
+    int is_operator = 0;  // if set to true, run algorithm from class
+    int is_special_word = 0;
     int last_byte = 0;
-    int number_of_words = 0;
+    int number_of_words = 0;  // index for appending word
     
     //char word[100];
     //char* words[100];
     char * word;
     char ** words;
+    char * special_word;
     
     enum Elements follows;
     
-    command_node_t node;
-    command_t my_command;
+    command_node_t node;  // pointer
+    // command_t my_command;  // pointer
     
-    struct operator_stack opstack;
-    struct command_stack comstack;
+    struct operator_stack opstack;  // not pointer
+    struct command_stack comstack;  // not pointer
     
-    struct command_stream comstream;
+    struct command_stream comstream;  // not pointer
     
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
     
     // init word (set all bytes to \0)
     word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-    memset(word, 0, WORD_BUF_SIZE);
+    memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+    
+    special_word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+    memset(special_word, 0, WORD_BUF_SIZE*sizeof(special_word));
     
     // init words (allocate and set items to null)
     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1);
-    memset(words, 0, sizeof(words)); // init words elements to NULL
+    memset(words, 0, WORD_BUF_SIZE*sizeof(words)); // init words elements to NULL
     
     // init node (allocate node and command)
     node = (command_node_t)malloc(sizeof(struct command_node));
-    my_command = (command_t)malloc(sizeof(struct command));
-    node->command = my_command;
+    // my_command = (command_t)malloc(sizeof(struct command));
+    // node->command = my_command;
+    init_node(node);
     
     for (;;)
     {
         // Reset
         is_operator = 0;
+        memset(special_word, 0, WORD_BUF_SIZE*sizeof(special_word));
 
         // get next byte
         c = get_next_byte(get_next_byte_argument);
@@ -401,7 +416,7 @@ make_command_stream (int (*get_next_byte) (void *),
         {
             // if first char of first word and follows command
             //if (strlen(word) == 0 && sizeof(words) == 0 && follows == COMMAND)
-            if(strlen(word) == 0 && words[0] == 0 && follows == COMMAND)
+            if(strlen(word) == 0 && words[0] == NULL && follows == COMMAND)
             {
                 // error
                 exit(12);
@@ -417,41 +432,52 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 // if first word
                 //if (sizeof(words) == 0)
-                if(words[0] == 0)
+                if(words[0] == NULL &&
+                    (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until") ||
+                    strcmp(word, "then") || strcmp(word, "else") || strcmp(word, "if") ||
+                    strcmp(word, "do") || strcmp(word, "done"))
+                    )
                 {
-                    if (!strcmp(word, "if") || !strcmp(word, "until"))
-                    {
-                        // push onto operator stack
-                    }
-                    else if (!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "if") ||
-                             !strcmp(word, "do") || !strcmp(word, "done"))
-                    {
-                        // validate (scope stack?)
-                        // process operator stack until reach preceding special word
-                    }
-                }
+                    special_word = word;
+                    follows = SPECIAL;
+                    // if (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until"))
+                    // {
+                    //     // push onto operator stack
+                    // }
+                    // else if (strcmp(word, "then") || strcmp(word, "else") || strcmp(word, "if") ||
+                    //          strcmp(word, "do") || strcmp(word, "done"))
+                    // {
+                    //     // validate (scope stack?)
+                    //     // process operator stack until reach preceding special word
+                    // }
+                } else {
                 
                 // save word in words then reset
                 words[number_of_words++] = word;
-                word = (char*) malloc(sizeof(word));
+                // word = (char*) malloc(sizeof(word));
+                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                memset(word, 0, WORD_BUF_SIZE*sizeof(word));
                 //word[0] = '\0';
                 //words[number_of_words] = (char*)malloc(sizeof(word));
                 //strcpy(words[number_of_words++], word);  // copy word into words[pos]            
+                }
             }
-            if (c == '#')
-            {
-                // ignore remaining characters until reach newline
-                // for (;;) {
-                //     c = get_next_byte(get_next_byte_argument);
-                //     if (c == '\n' || c == EOF)
-                //         break;
-                // }
-                do {
-                    c = get_next_byte(get_next_byte_argument);
-                } while (c != '\n' && c != EOF);
-            } else {
-                if (sizeof(words) > 0) // then simple command
+            if (c != ' ' && c != '\t') {
+                if (c == '#')
                 {
+                    // ignore remaining characters until reach newline
+                    // for (;;) {
+                    //     c = get_next_byte(get_next_byte_argument);
+                    //     if (c == '\n' || c == EOF)
+                    //         break;
+                    // }
+                    do {
+                        c = get_next_byte(get_next_byte_argument);
+                    } while (c != '\n' && c != EOF);
+                }
+                if (words[0] != NULL) // then simple command
+                {
+                    follows = COMMAND;
                     // push simple command
                     node->command->type = SIMPLE_COMMAND;
                     node->command->status = EXECUTION_STATUS;
@@ -462,10 +488,11 @@ make_command_stream (int (*get_next_byte) (void *),
                     command_stack_push(&comstack, *node);
                     
                     // reset
-                    node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
-                    my_command = (command_t)malloc(sizeof(struct command));
-                    node->command = my_command;
-                    words = (char**) malloc(sizeof(words)); // No good solution yet. 
+                    // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
+                    // my_command = (command_t)malloc(sizeof(struct command));
+                    // node->command = my_command;
+                    init_node(node);
+                    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                     words[0] = NULL;
                     number_of_words = 0;
                 }
@@ -493,21 +520,75 @@ make_command_stream (int (*get_next_byte) (void *),
                         follows = NEWLINE;
                     }
                 }
-                // else if < or >
-                    // if follows command
-                        // if simple command
-                            // push
-                        // else
-                            // modify last command
-                    // else
+                else if (c == '<' || c == '>') {
+                    r = c;
+                    if (follows != COMMAND) {
                         // error
+                        exit(45);
+                    }
+                    for (;;) {
+                        c = get_next_byte(get_next_byte_argument);
+                        // if c is whitespace
+                        if ((c == ' ' || c == '\t') && strlen(word) != 0) {
+                            // end word
+                            words[number_of_words++] = word;
+                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+                        }
+                        // if c is word char
+                        if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                              c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
+                            // append to word
+                            i = strlen(word);
+                            word[i] = c;
+                            word[++i] = '\0';
+                        }
+                        // else
+                        else {
+                            // end word
+                            words[number_of_words++] = word;
+                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+                            break;
+                        }
+                    }
+                    // if more than one word or zero words
+                    if (number_of_words != 1) {
+                        exit(56);
+                    }
+                    node = command_stack_top(&comstack);
+                    if (r == '<') {
+                        if (input)
+                            exit (67);
+                        else
+                            node->command->input = words[0];
+                    } else {
+                        if (output)
+                            exit (78);
+                        else
+                            node->command->output = words[0];
+                    }
+                    init_node(node);
+                    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                    words[0] = NULL;
+                    number_of_words = 0;s
+                }
                 if (is_operator)
                 {
                     // get operator type from operator string
-                    char *operator_string = (char*)malloc(sizeof(c));
-                    strcpy(operator_string, c);
-                    int operator_type = get_operator_type(operator_string);  //operator_string is made up
+                    // char *operator_string = (char*)malloc(sizeof(c)+1);
+                    // strcpy(operator_string, &c);
+                    //int operator_type = get_operator_type(operator_string);  //operator_string is made up
+                    int operator_type = -1; // default
                     struct operator_node op_node;
+                    if (is_special_word)
+                        operator_type = get_operator_type(special_word);
+                    else if (c == ';')
+                        operator_type = get_operator_type(";");
+                    else if (c == '\n')
+                        operator_type = get_operator_type("\n");
+                    else if (c == '|')
+                        operator_type = get_operator_type("|");
                     
                     op_node.value = operator_type;
                     
@@ -592,6 +673,11 @@ make_command_stream (int (*get_next_byte) (void *),
 
         last_byte = c;
     }
+    
+    while(!operator_stack_empty(&opstack))
+    {
+        // Do some processing if necessary. 
+    }
 
     comstream.head = comstack.top;
     
@@ -606,7 +692,8 @@ read_command_stream (command_stream_t s)
     command_t c = NULL;
     if (s->head != NULL) {
         c = s->head->command;
-        s->head = s->head->next;
+        if(s->head->next != NULL)
+            s->head = s->head->next;
     }
     
     return c;
