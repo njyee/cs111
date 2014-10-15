@@ -349,7 +349,7 @@ make_command_stream (int (*get_next_byte) (void *),
     int j;
     size_t i;
 
-    int c = 0;
+    char c = '\0';
     int is_operator = 0;
     int last_byte = 0;
     int number_of_words = 0;
@@ -404,7 +404,7 @@ make_command_stream (int (*get_next_byte) (void *),
             if(strlen(word) == 0 && words[0] == 0 && follows == COMMAND)
             {
                 // error
-                ;
+                exit(12);
             }
             // append (could have huge problems with segfault)
             i = strlen(word);
@@ -436,146 +436,157 @@ make_command_stream (int (*get_next_byte) (void *),
                 word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
                 //words[number_of_words] = (char*)malloc(sizeof(word));
-                //strcpy(words[number_of_words++], word);  // copy word into words[pos]            }
+                //strcpy(words[number_of_words++], word);  // copy word into words[pos]            
+            }
             if (c == '#')
             {
                 // ignore remaining characters until reach newline
-                for (;;) {
+                // for (;;) {
+                //     c = get_next_byte(get_next_byte_argument);
+                //     if (c == '\n' || c == EOF)
+                //         break;
+                // }
+                do {
                     c = get_next_byte(get_next_byte_argument);
-                    if (c == '\n' || c == EOF)
-                        break;
-                }
-            }
-            if (sizeof(words) > 0) // then simple command
-            {
-                // push simple command
-                node->command->type = SIMPLE_COMMAND;
-                node->command->status = EXECUTION_STATUS;
-                node->command->input = NULL;
-                node->command->output = NULL;
-                node->command->u.word = words;  // might not work. Might need to do a form of memcpy instead.
-                // node->command->u.command[0] = NULL;
-                command_stack_push(&comstack, *node);
-                
-                // reset
-                node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
-                my_command = (command_t)malloc(sizeof(struct command));
-                node->command = my_command;
-                words = (char**) malloc(sizeof(words)); // No good solution yet. 
-                number_of_words = 0;
-            }
-            if (c == ';' || c == '|')
-            {
-                if (follows == COMMAND)
+                } while (c != '\n' && c != EOF);
+            } else {
+                if (sizeof(words) > 0) // then simple command
                 {
-                    is_operator = 1;
+                    // push simple command
+                    node->command->type = SIMPLE_COMMAND;
+                    node->command->status = EXECUTION_STATUS;
+                    node->command->input = NULL;
+                    node->command->output = NULL;
+                    node->command->u.word = words;  // might not work. Might need to do a form of memcpy instead.
+                    // node->command->u.command[0] = NULL;
+                    command_stack_push(&comstack, *node);
+                    
+                    // reset
+                    node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
+                    my_command = (command_t)malloc(sizeof(struct command));
+                    node->command = my_command;
+                    words = (char**) malloc(sizeof(words)); // No good solution yet. 
+                    words[0] = NULL;
+                    number_of_words = 0;
                 }
-                else {
-                    // error
-                }
-            }
-            else if (c == '\n')
-            {
-                if (follows == COMMAND)
+                if (c == ';' || c == '|')
                 {
-                    c = ';';
-                    is_operator = 1;
+                    if (follows == COMMAND)
+                    {
+                        is_operator = 1;
+                    }
+                    else {
+                        // error
+                        printf("operator %c does not follow command", c);
+                        exit(23);
+                    }
                 }
-                else if (last_byte == ';')
+                else if (c == '\n')
                 {
-                    follows = NEWLINE;
+                    if (follows == COMMAND)
+                    {
+                        c = ';';
+                        is_operator = 1;
+                    }
+                    else if (last_byte == ';')
+                    {
+                        follows = NEWLINE;
+                    }
                 }
-            }
-            // else if < or >
-                // if follows command
-                    // if simple command
-                        // push
+                // else if < or >
+                    // if follows command
+                        // if simple command
+                            // push
+                        // else
+                            // modify last command
                     // else
-                        // modify last command
-                // else
-                    // error
-            if (is_operator)
-            {
-                // get operator type from operator string
-                char *operator_string = (char*)malloc(sizeof(c));
-                strcpy(operator_string, c, sizeof(c));
-                int operator_type = get_operator_type(operator_string);  //operator_string is made up
-                struct operator_node op_node;
-                
-                op_node.value = operator_type;
-                
-                if(operator_stack_empty(&opstack)) {
-                    operator_stack_push(&opstack, op_node);
-                } else if(operator_type > operator_stack_top(&opstack)->value 
-                            || operator_type == IF_OP) {
-                    operator_stack_push(&opstack, op_node);
-                } else {
-                    struct operator_node *opstack_top = operator_stack_top(&opstack);
-                    while ( (opstack_top->value != OPEN_PAREN_OP || opstack_top->value != THEN_OP
-                            || opstack_top->value != ELSE_OP || opstack_top->value != IF_OP )
-                            && operator_type <= opstack_top->value) {
-                                struct operator_node popped_operator = operator_stack_pop(&opstack);
-                                struct command_node second_command   = command_stack_pop(&comstack);
-                                struct command_node first_command    = command_stack_pop(&comstack);
-                                struct command_node combined_command = combine_two_commands(first_command, second_command, popped_operator.value);
-                                
-                                command_stack_push(&comstack, combined_command);
-                                
-                                opstack_top = operator_stack_top(&opstack);
-                                if(opstack_top == NULL)
-                                    break;
-                            }
-                            operator_stack_push(&opstack, op_node);
-                            if(operator_stack_top(&opstack)->value == FI_OP) {
-                                operator_stack_pop(&opstack);  // don't need FI_OP
-                                struct operator_node popped_operator = operator_stack_pop(&opstack);
-                                if(popped_operator.value == ELSE_OP) {
-                                    struct command_node third_command  = command_stack_pop(&comstack);
-                                    struct command_node second_command = command_stack_pop(&comstack);
-                                    struct command_node first_command  = command_stack_pop(&comstack);
-                                    struct command_node combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
+                        // error
+                if (is_operator)
+                {
+                    // get operator type from operator string
+                    char *operator_string = (char*)malloc(sizeof(c));
+                    strcpy(operator_string, c);
+                    int operator_type = get_operator_type(operator_string);  //operator_string is made up
+                    struct operator_node op_node;
+                    
+                    op_node.value = operator_type;
+                    
+                    if(operator_stack_empty(&opstack)) {
+                        operator_stack_push(&opstack, op_node);
+                    } else if(operator_type > operator_stack_top(&opstack)->value 
+                                || operator_type == IF_OP) {
+                        operator_stack_push(&opstack, op_node);
+                    } else {
+                        struct operator_node *opstack_top = operator_stack_top(&opstack);
+                        while ( (opstack_top->value != OPEN_PAREN_OP || opstack_top->value != THEN_OP
+                                || opstack_top->value != ELSE_OP || opstack_top->value != IF_OP )
+                                && operator_type <= opstack_top->value) {
+                                    struct operator_node popped_operator = operator_stack_pop(&opstack);
+                                    struct command_node second_command   = command_stack_pop(&comstack);
+                                    struct command_node first_command    = command_stack_pop(&comstack);
+                                    struct command_node combined_command = combine_two_commands(first_command, second_command, popped_operator.value);
+                                    
                                     command_stack_push(&comstack, combined_command);
-                                    operator_stack_pop(&opstack); //should be popping THEN_OP
-                                    operator_stack_pop(&opstack); //should be popping IF_OP
-                                } else if(popped_operator.value == THEN_OP) {
-                                    struct command_node second_command = command_stack_pop(&comstack);
-                                    struct command_node first_command  = command_stack_pop(&comstack);
-                                    struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
-                                    command_stack_push(&comstack, combined_command);
-                                    operator_stack_pop(&opstack); //should be popping IF_OP
-                                } else { // error 
+                                    
+                                    opstack_top = operator_stack_top(&opstack);
+                                    if(opstack_top == NULL)
+                                        break;
                                 }
-                                
-                            }
+                                operator_stack_push(&opstack, op_node);
+                                if(operator_stack_top(&opstack)->value == FI_OP) {
+                                    operator_stack_pop(&opstack);  // don't need FI_OP
+                                    struct operator_node popped_operator = operator_stack_pop(&opstack);
+                                    if(popped_operator.value == ELSE_OP) {
+                                        struct command_node third_command  = command_stack_pop(&comstack);
+                                        struct command_node second_command = command_stack_pop(&comstack);
+                                        struct command_node first_command  = command_stack_pop(&comstack);
+                                        struct command_node combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
+                                        command_stack_push(&comstack, combined_command);
+                                        operator_stack_pop(&opstack); //should be popping THEN_OP
+                                        operator_stack_pop(&opstack); //should be popping IF_OP
+                                    } else if(popped_operator.value == THEN_OP) {
+                                        struct command_node second_command = command_stack_pop(&comstack);
+                                        struct command_node first_command  = command_stack_pop(&comstack);
+                                        struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
+                                        command_stack_push(&comstack, combined_command);
+                                        operator_stack_pop(&opstack); //should be popping IF_OP
+                                    } else {
+                                        // error
+                                        printf("error with compound command");
+                                        exit(34);
+                                    }
+                                    
+                                }
+                    }
+                    
+                    
+                    // if encounter new commands (simple command)
+                    //     put them on command stack
+                    // if encounter new operator
+                    //     if operator_stack == NULL
+                    //         Add new operator to operator stack
+                    //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
+                    //         Add new oparator to operator stack
+                    //     else
+                    //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
+                    //           {
+                    //             operator = operator-stack.pop()
+                    //             second-command = command-stack.pop()
+                    //             first-command = command-stack.pop()
+                    //             new-command = combine(first-command, second-command, operator)
+                    //             command-stack.push(new-command)
+                    //             top-operator = operator-stack.peek()
+                    //             if top-operator == NULL
+                    //                 break;
+                    //           }
+                    //         operator-stack.push(new_operator)
+                    //         if(operator-stack.top == "fi")
+                    //             operator-stack.pop()
+                    //             if(operator-stack.top == "then")
+                    //                 pop and process twice
+                    //             else if(operator-stack.top == "else")
+                    //                 pop and process 3 times
                 }
-                
-                
-                // if encounter new commands (simple command)
-                //     put them on command stack
-                // if encounter new operator
-                //     if operator_stack == NULL
-                //         Add new operator to operator stack
-                //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
-                //         Add new oparator to operator stack
-                //     else
-                //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
-                //           {
-                //             operator = operator-stack.pop()
-                //             second-command = command-stack.pop()
-                //             first-command = command-stack.pop()
-                //             new-command = combine(first-command, second-command, operator)
-                //             command-stack.push(new-command)
-                //             top-operator = operator-stack.peek()
-                //             if top-operator == NULL
-                //                 break;
-                //           }
-                //         operator-stack.push(new_operator)
-                //         if(operator-stack.top == "fi")
-                //             operator-stack.pop()
-                //             if(operator-stack.top == "then")
-                //                 pop and process twice
-                //             else if(operator-stack.top == "else")
-                //                 pop and process 3 times
             }
         }
 
