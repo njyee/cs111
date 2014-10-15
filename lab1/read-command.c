@@ -71,11 +71,13 @@ void init_command_stack(struct command_stack *stack) {
 // returns void
 void command_stack_push(struct command_stack *stack, struct command_node node) {
     if(stack->size == 0) {
-        stack->top = (struct command_node*)malloc(sizeof(struct command_node));
+        //stack->top = (struct command_node*)malloc(sizeof(struct command_node));
+        stack->top = (struct command_node*)malloc(sizeof(node));
         stack->top->next = NULL;
         stack->top->command = node.command;
         stack->size++;
     } else {
+        //struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
         struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
         temp->command = node.command;
         temp->next = stack->top;
@@ -135,12 +137,14 @@ void init_operator_stack (struct operator_stack *stack) {
 
 void operator_stack_push( struct operator_stack *stack, struct operator_node node) {
     if(stack->size == 0) {
-        stack->top = (struct operator_node*)malloc(sizeof(struct operator_node));
+        //stack->top = (struct operator_node*)malloc(sizeof(struct operator_node));
+        stack->top = (struct operator_node*)malloc(sizeof(node));
         stack->top->value = node.value;
         stack->top->next = NULL;
         stack->size++;
     } else {
-        struct operator_node* temp = (struct operator_node*)malloc(sizeof(struct operator_node));
+        //struct operator_node* temp = (struct operator_node*)malloc(sizeof(struct operator_node));
+        struct operator_node* temp = (struct operator_node*)malloc(sizeof(node));
         temp->value = node.value;
         temp->next = stack->top;
         stack->top = temp;
@@ -213,7 +217,7 @@ int is_special_token(char c){
 }
 
 int is_valid_character(char c) {
-    return isalnum(c) || isspace(c) || is_other_token(c) || is_special_token(c);
+    return isalnum(c) || isspace(c) || is_other_character(c) || is_special_token(c);
 }
 
 int get_operator_type(char *buf) {
@@ -344,7 +348,8 @@ make_command_stream (int (*get_next_byte) (void *),
     int number_of_words = 0;
     
     char word[100];
-    char* words[100];
+    //char* words[100];
+    char ** words;
     
     enum Elements follows;
     
@@ -357,6 +362,8 @@ make_command_stream (int (*get_next_byte) (void *),
     
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
+    
+    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1);
 
     for (;;)
     {
@@ -402,6 +409,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 //words[number_of_words++] = word;
                 //word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
+                words[number_of_words] = (char*)malloc(sizeof(word));
                 strcpy(words[number_of_words++], word);  // copy word into words[pos]
                 memset(word, 0, sizeof(word));           // 'reset' word by reinitializing all elements to 0
             }
@@ -426,7 +434,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 command_stack_push(&comstack, *node);
                 
                 // reset
-                node = (command_node_t) malloc(sizeof(struct command_node));
+                node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
                 words = (char**) malloc(sizeof(words)); // No good solution yet. 
                 number_of_words = 0;
             }
@@ -506,7 +514,7 @@ make_command_stream (int (*get_next_byte) (void *),
                                     struct command_node second_command = command_stack_pop(&comstack);
                                     struct command_node first_command  = command_stack_pop(&comstack);
                                     struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
-                                    command_stacks_push(&comstack, combined_command);
+                                    command_stack_push(&comstack, combined_command);
                                     operator_stack_pop(&opstack); //should be popping IF_OP
                                 } else { // error 
                                 }
