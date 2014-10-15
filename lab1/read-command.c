@@ -558,12 +558,12 @@ make_command_stream (int (*get_next_byte) (void *),
                     }
                     node = command_stack_top(&comstack);
                     if (r == '<') {
-                        if (input)
+                        if (node->command->input)
                             exit (67);
                         else
                             node->command->input = words[0];
                     } else {
-                        if (output)
+                        if (node->command->output)
                             exit (78);
                         else
                             node->command->output = words[0];
@@ -571,7 +571,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     init_node(node);
                     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                     words[0] = NULL;
-                    number_of_words = 0;s
+                    number_of_words = 0;
                 }
                 if (is_operator)
                 {
@@ -692,8 +692,7 @@ read_command_stream (command_stream_t s)
     command_t c = NULL;
     if (s->head != NULL) {
         c = s->head->command;
-        if(s->head->next != NULL)
-            s->head = s->head->next;
+        s->head = s->head->next;
     }
     
     return c;
