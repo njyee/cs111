@@ -58,8 +58,6 @@ struct command_node
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
     node->next = (command_node_t) malloc(sizeof(struct command_node));
-    node->command = NULL;
-    node->next = NULL;
 }
 
 struct command_stack {
@@ -367,7 +365,7 @@ make_command_stream (int (*get_next_byte) (void *),
     char ** words;
     char * special_word;
     
-    enum Elements follows;
+    enum Elements follows = NEWLINE;
     
     command_node_t node;  // pointer
     // command_t my_command;  // pointer
@@ -431,10 +429,9 @@ make_command_stream (int (*get_next_byte) (void *),
                 // if first word
                 //if (sizeof(words) == 0)
                 if(words[0] == NULL &&
-                    (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until") ||
-                    strcmp(word, "then") || strcmp(word, "else") || strcmp(word, "if") ||
-                    strcmp(word, "do") || strcmp(word, "done"))
-                    )
+                    (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until") ||
+                     !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
+                     !strcmp(word, "do") || !strcmp(word, "done")))
                 {
                     special_word = word;
                     follows = SPECIAL;
@@ -573,6 +570,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 if (is_operator)
                 {
+                    follows = OPERATOR;
                     // get operator type from operator string
                     // char *operator_string = (char*)malloc(sizeof(c)+1);
                     // strcpy(operator_string, &c);

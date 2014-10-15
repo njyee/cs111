@@ -18,9 +18,13 @@
 // Used for precedence 
 enum operator_type {
   OPEN_PAREN_OP,
+  WHILE_OP,
+  UNTIL_OP,
   IF_OP,
+  DO_OP,
   THEN_OP,
   ELSE_OP,
+  DONE_OP
   FI_OP,
   SEMICOLON_OP,
   NEWLINE_OP,
