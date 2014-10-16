@@ -728,6 +728,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP or CLOSE_PAREN_OP
                     free(operator_stack_pop(&spec_op_stack));
                     struct operator_node *popped_operator = operator_stack_pop(&opstack);
+                    free(operator_stack_pop(&spec_op_stack));
                     if(popped_operator->value == ELSE_OP) {
                         struct command_node* third_command  = command_stack_pop(&comstack);
                         struct command_node* second_command = command_stack_pop(&comstack);
