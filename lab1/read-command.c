@@ -378,7 +378,7 @@ make_command_stream (int (*get_next_byte) (void *),
     
     struct command_stream comstream;  // not pointer
     
-    struct operator_stack special_words_stack;
+    struct operator_stack spec_op_stack;
     
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
@@ -440,7 +440,8 @@ make_command_stream (int (*get_next_byte) (void *),
                      !strcmp(word, "do") || !strcmp(word, "done")))
                 {
                     special_word = word;
-                    follows = SPECIAL;
+                    if (strcmp(word, "fi") && strcmp(word, "done"))
+                        follows = SPECIAL;
                     // if (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until"))
                     // {
                     //     // push onto operator stack
@@ -597,7 +598,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     if(operator_stack_empty(&opstack)) {
                         operator_stack_push(&opstack, op_node);
                     } else if(operator_type > operator_stack_top(&opstack)->value 
-                                || operator_type == IF_OP || WHILE_OP || UNTIL_OP) {
+                                || operator_type == IF_OP || operator_type == WHILE_OP || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
                         operator_stack_push(&opstack, op_node);
                     } else {
                         struct operator_node *opstack_top = operator_stack_top(&opstack);
@@ -619,14 +620,22 @@ make_command_stream (int (*get_next_byte) (void *),
                                 }
                                 operator_stack_push(&opstack, op_node);
                                 if (is_special_word) {
-                                    if (operator_type == THEN_OP && spec_op_stack->top && spec_op_stack->top->value == IF_OP)
-                                        
-                                    // if(param->value == THEN_OP && specop_stack->top->value == IF_OP)
-                                    //     operator_stack_push(specop_stack, param);
-                                    // else if...
-                                    // ...
-                                    // else
-                                    //     exit w/ error   
+                                    if (!spec_op_stack->top) {
+                                        int top_operator_value = spec_op_stack->top->value;
+                                        if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
+                                           (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
+                                           (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
+                                           (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
+                                           (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
+                                           (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
+                                           (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
+                                           (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
+                                                operator_stack_push(&spec_op_stack, op_node);
+                                        } else 
+                                                exit(312);
+                                    } else {
+                                        exit(313);
+                                    }
                                 }
                                 
                                 
