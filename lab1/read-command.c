@@ -327,7 +327,7 @@ struct command_node *combine_three_commands(struct command_node *first_command, 
     
     // dynamically allocate node and command
     new_command_node = (command_node_t)malloc(sizeof(struct command_node));
-    new_command_node.command = (command_t)malloc(sizeof(struct command));    
+    new_command_node->command = (command_t)malloc(sizeof(struct command));    
     
     // fill in command attributes
     new_command_node->command->type    = command_type;
@@ -619,6 +619,8 @@ make_command_stream (int (*get_next_byte) (void *),
                                 }
                                 operator_stack_push(&opstack, op_node);
                                 if (is_special_word) {
+                                    if (operator_type == THEN_OP && spec_op_stack->top && spec_op_stack->top->value == IF_OP)
+                                        
                                     // if(param->value == THEN_OP && specop_stack->top->value == IF_OP)
                                     //     operator_stack_push(specop_stack, param);
                                     // else if...
