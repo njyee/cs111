@@ -418,8 +418,8 @@ make_command_stream (int (*get_next_byte) (void *),
 
         // get next byte
         c = get_next_byte(get_next_byte_argument);
-        if(c == EOF)
-            break;
+        // if(c == EOF)
+        //     break;
         
         // if word char
         if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
@@ -476,12 +476,12 @@ make_command_stream (int (*get_next_byte) (void *),
                 // save word in words then reset
                 words[number_of_words++] = word;
                 // word = (char*) malloc(sizeof(word));
-                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                memset(word, 0, WORD_BUF_SIZE*sizeof(word));
                 //word[0] = '\0';
                 //words[number_of_words] = (char*)malloc(sizeof(word));
                 //strcpy(words[number_of_words++], word);  // copy word into words[pos]            
                 }
+                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                memset(word, 0, WORD_BUF_SIZE*sizeof(word));
             }
             if (c != ' ' && c != '\t') {
                 if (c == '#')
@@ -748,6 +748,8 @@ make_command_stream (int (*get_next_byte) (void *),
             }
         }
 
+        if(c == EOF)
+            break;
         last_byte = c;
     }
     
