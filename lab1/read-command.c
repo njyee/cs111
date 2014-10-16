@@ -553,6 +553,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     {
                         c = ';';
                         is_operator = 1;
+                        follows = SEMICOLON;
                     }
                     else if (last_byte == ';')
                     {
