@@ -379,9 +379,15 @@ make_command_stream (int (*get_next_byte) (void *),
     struct operator_stack opstack;  // not pointer
     struct command_stack comstack;  // not pointer
     
-    struct command_stream comstream;  // not pointer
+    //struct command_stream comstream;  // not pointer
+    struct command_stream *comstream;
     
     struct operator_stack spec_op_stack;
+    
+    
+    // init comstream
+    comstream = (struct command_stream*)malloc(sizeof(struct command_stream));
+    comstream->head = NULL;
     
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
@@ -609,7 +615,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 if (is_operator)
                 {
-                    follows = OPERATOR;
+                    // follows = OPERATOR;
                     // get operator type from operator string
                     // char *operator_string = (char*)malloc(sizeof(c)+1);
                     // strcpy(operator_string, &c);
@@ -752,7 +758,8 @@ make_command_stream (int (*get_next_byte) (void *),
 
     while (!command_stack_empty(&comstack)) {
         node = command_stack_pop(&comstack);
-        command_stream_push(&comstream, *node);   
+        command_stream_push(comstream, *node);
+        //command_stream_push(&comstream, *node);   
     }
     
     return &comstream;  // We are C hackers
