@@ -53,7 +53,7 @@ struct command_node
 
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
-    node->next = NULL
+    node->next = NULL;
     //node->next = (command_node_t) malloc(sizeof(struct command_node));
 }
 
