@@ -44,29 +44,6 @@ enum Elements
 
 typedef struct command_node   *command_node_t;
 
-struct command_stream
-{
-    command_node_t head;
-};
-
-// push node to top and increment size
-// returns void
-void command_stream_push(struct command_stream *stream, struct command_node node) {
-    if(stream->size == 0) {
-        //stack->top = (struct command_node*)malloc(sizeof(struct command_node));
-        stream->top = (struct command_node*)malloc(sizeof(node));
-        stream->top->next = NULL;
-        stream->top->command = node.command;
-        stream->size++;
-    } else {
-        //struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
-        struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
-        temp->command = node.command;
-        temp->next = stream->head;
-        stream->head = temp;
-    }
-}
-
 struct command_node
 {
     command_t      command; //lots of stuff is named command
@@ -76,6 +53,28 @@ struct command_node
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
     node->next = (command_node_t) malloc(sizeof(struct command_node));
+}
+
+struct command_stream
+{
+    command_node_t head;
+};
+
+// push node to top and increment size
+// returns void
+void command_stream_push(struct command_stream *stream, struct command_node node) {
+    if(stream->head == NULL) {
+        //stack->top = (struct command_node*)malloc(sizeof(struct command_node));
+        stream->head = (struct command_node*)malloc(sizeof(node));
+        stream->head->next = NULL;
+        stream->head->command = node.command;
+    } else {
+        //struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
+        struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
+        temp->command = node.command;
+        temp->next = stream->head;
+        stream->head = temp;
+    }
 }
 
 struct command_stack {
@@ -109,17 +108,14 @@ void command_stack_push(struct command_stack *stack, struct command_node node) {
 
 // pop the top and decrement size
 // returns the popped top
-struct command_node command_stack_pop(struct command_stack *stack) {
-    struct command_node retval; 
-    struct command_node *newtop;
-    
+struct command_node* command_stack_pop(struct command_stack *stack) {
+    struct command_node* retval; 
+
     if (!stack->size)
         return NULL;
     
-    retval = *(stack->top); 
-    newtop = stack->top->next;
-    free(stack->top);
-    stack->top = newtop;
+    retval = stack->top; 
+    stack->top = stack->top->next;
     return retval;
 }
 
@@ -176,13 +172,14 @@ void operator_stack_push( struct operator_stack *stack, struct operator_node nod
     }
 }
 
-struct operator_node operator_stack_pop(struct operator_stack *stack) {
-    struct operator_node retval = *(stack->top);
-    struct operator_node *temp = stack->top->next;
+struct operator_node* operator_stack_pop(struct operator_stack *stack) {
+    struct operator_node* retval;
+    
     if (!stack->size)
         return NULL;
-    free(stack->top);
-    stack->top = temp;
+    
+    retval = stack->top;
+    stack->top = stack->top->next;
     return retval;
 }
 
@@ -294,71 +291,54 @@ int get_command_type(int op) {
 }
 
 // used to combine 2 command nodes into a single command node
-struct command_node combine_two_commands(struct command_node first_command, struct command_node second_command, int op) {
+struct command_node *combine_two_commands(struct command_node *first_command, struct command_node *second_command, int op) {
     // declarations
-    struct command_node new_command_node; 
+    struct command_node *new_command_node; 
     int command_type;
-    command_t first, second, new_command;
-    
+
     // get command type from the operator type
     command_type = get_command_type(op);
     
-    // allocate memory for commands to be stored within new_command
-    first  = (command_t)malloc(sizeof(struct command));
-    second = (command_t)malloc(sizeof(struct command));
-    new_command = (command_t)malloc(sizeof(struct command));
+    // allocate memory for node and command
+    new_command_node = (command_node_t)malloc(sizeof(struct command_node));
+    new_command_node->command = (command_t)malloc(sizeof(struct command));
     
-    // associate new_command with new_command_node
-    new_command_node.command = new_command;
-    
-    *first  = *(first_command.command);
-    *second = *(second_command.command);
-    
-    new_command_node.command->type    = command_type;
-    new_command_node.command->status  = EXECUTION_STATUS;
-    new_command_node.command->input   = NULL;
-    new_command_node.command->output  = NULL;
+    new_command_node->command->type    = command_type;
+    new_command_node->command->status  = EXECUTION_STATUS;
+    new_command_node->command->input   = NULL;
+    new_command_node->command->output  = NULL;
     
     // place objects in u.command
-    new_command_node.command->u.command[0] = first;
-    new_command_node.command->u.command[1] = second;
+    new_command_node->command->u.command[0] = first_command->command;
+    new_command_node->command->u.command[1] = second_command->command;
     
     return new_command_node;
 }
 
 // overload of combine_commands that takes 3 command nodes
 // for use with if-then-lse commands
-struct command_node combine_three_commands(struct command_node first_command, struct command_node second_command, struct command_node third_command, int op) {
+struct command_node *combine_three_commands(struct command_node *first_command, struct command_node *second_command, struct command_node *third_command, int op) {
     // declarations
-    struct command_node new_command_node; 
+    struct command_node *new_command_node; 
     int command_type;
-    command_t first, second, third;
     
     // get command type from the operator type
     command_type = get_command_type(op); // op == IF_OP
     
-    // allocate memory for commands to be stored within new_command
-    first  = (command_t)malloc(sizeof(struct command));
-    second = (command_t)malloc(sizeof(struct command));
-    third  = (command_t)malloc(sizeof(struct command));
-    
-    *first  = *(first_command.command);
-    *second = *(second_command.command);
-    *third  = *(third_command.command);
-    
-    // dynamically allocate a new command to house first, second, third
+    // dynamically allocate node and command
+    new_command_node = (command_node_t)malloc(sizeof(struct command_node));
     new_command_node.command = (command_t)malloc(sizeof(struct command));    
     
     // fill in command attributes
-    new_command_node.command->type    = command_type;
-    new_command_node.command->status  = EXECUTION_STATUS;
-    new_command_node.command->input   = NULL;
-    new_command_node.command->output  = NULL;
+    new_command_node->command->type    = command_type;
+    new_command_node->command->status  = EXECUTION_STATUS;
+    new_command_node->command->input   = NULL;
+    new_command_node->command->output  = NULL;
     
     // place objects in u.command
-    new_command_node.command->u.command[0] = first;
-    new_command_node.command->u.command[1] = second;
-    new_command_node.command->u.command[2] = third;
+    new_command_node->command->u.command[0] = first_command->command;
+    new_command_node->command->u.command[1] = second_command->command;
+    new_command_node->command->u.command[2] = third_command->command;
     
     return new_command_node;
 }
@@ -398,8 +378,11 @@ make_command_stream (int (*get_next_byte) (void *),
     
     struct command_stream comstream;  // not pointer
     
+    struct operator_stack special_words_stack;
+    
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
+    init_operator_stack(&special_words_stack);
     
     // init word (set all bytes to \0)
     word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
@@ -618,50 +601,63 @@ make_command_stream (int (*get_next_byte) (void *),
                         operator_stack_push(&opstack, op_node);
                     } else {
                         struct operator_node *opstack_top = operator_stack_top(&opstack);
-                        while ( (opstack_top->value != OPEN_PAREN_OP || opstack_top->value != THEN_OP
-                                || opstack_top->value != ELSE_OP || opstack_top->value != IF_OP || opstack_top->value != DO_OP )
+                        while ( (opstack_top->value != OPEN_PAREN_OP && opstack_top->value != THEN_OP
+                                && opstack_top->value != ELSE_OP && opstack_top->value != IF_OP 
+                                && opstack_top->value != DO_OP && opstack_top->value != WHILE_OP
+                                && opstack_top->value != UNTIL_OP)
                                 && operator_type <= opstack_top->value) {
-                                    struct operator_node popped_operator = operator_stack_pop(&opstack);
-                                    struct command_node second_command   = command_stack_pop(&comstack);
-                                    struct command_node first_command    = command_stack_pop(&comstack);
-                                    struct command_node combined_command = combine_two_commands(first_command, second_command, popped_operator.value);
+                                    struct operator_node *popped_operator = operator_stack_pop(&opstack);
+                                    struct command_node *second_command   = command_stack_pop(&comstack);
+                                    struct command_node *first_command    = command_stack_pop(&comstack);
+                                    struct command_node *combined_command = combine_two_commands(first_command, second_command, popped_operator->value);
                                     
-                                    command_stack_push(&comstack, combined_command);
+                                    command_stack_push(&comstack, *combined_command);
                                     
                                     opstack_top = operator_stack_top(&opstack);
                                     if(opstack_top == NULL)
                                         break;
                                 }
                                 operator_stack_push(&opstack, op_node);
-                                if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) {
-                                    operator_stack_pop(&opstack);  // don't need FI_OP or DONE_OP
-                                    struct operator_node popped_operator = operator_stack_pop(&opstack);
-                                    if(popped_operator.value == ELSE_OP) {
-                                        struct command_node third_command  = command_stack_pop(&comstack);
-                                        struct command_node second_command = command_stack_pop(&comstack);
-                                        struct command_node first_command  = command_stack_pop(&comstack);
-                                        struct command_node combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
-                                        command_stack_push(&comstack, combined_command);
-                                        operator_stack_pop(&opstack); //should be popping THEN_OP
-                                        operator_stack_pop(&opstack); //should be popping IF_OP
-                                    } else if(popped_operator.value == THEN_OP) {
-                                        struct command_node second_command = command_stack_pop(&comstack);
-                                        struct command_node first_command  = command_stack_pop(&comstack);
-                                        struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
-                                        command_stack_push(&comstack, combined_command);
-                                        operator_stack_pop(&opstack); //should be popping IF_OP
-                                    } else if(popped_operator.value == DO_OP) {
-                                        struct command_node second_command = command_stack_pop(&comstack);
-                                        struct command_node first_command  = command_stack_pop(&comstack);
-                                        struct command_node combined_command;
+                                if (is_special_word) {
+                                    // if(param->value == THEN_OP && specop_stack->top->value == IF_OP)
+                                    //     operator_stack_push(specop_stack, param);
+                                    // else if...
+                                    // ...
+                                    // else
+                                    //     exit w/ error   
+                                }
+                                
+                                
+                                if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) 
+                                {
+                                    free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP
+                                    struct operator_node *popped_operator = operator_stack_pop(&opstack);
+                                    if(popped_operator->value == ELSE_OP) {
+                                        struct command_node* third_command  = command_stack_pop(&comstack);
+                                        struct command_node* second_command = command_stack_pop(&comstack);
+                                        struct command_node* first_command  = command_stack_pop(&comstack);
+                                        struct command_node* combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
+                                        command_stack_push(&comstack, *combined_command);
+                                        free(operator_stack_pop(&opstack)); //should be popping THEN_OP
+                                        free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                    } else if(popped_operator->value == THEN_OP) {
+                                        struct command_node* second_command = command_stack_pop(&comstack);
+                                        struct command_node* first_command  = command_stack_pop(&comstack);
+                                        struct command_node* combined_command    = combine_two_commands(first_command, second_command, IF_OP);
+                                        command_stack_push(&comstack, *combined_command);
+                                        free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                    } else if(popped_operator->value == DO_OP) {
+                                        struct command_node* second_command = command_stack_pop(&comstack);
+                                        struct command_node* first_command  = command_stack_pop(&comstack);
+                                        struct command_node* combined_command;
                                         popped_operator = operator_stack_pop(&opstack);  // should be WHILE_OP or UNTIL_OP nodes
-                                        if(popped_operator.value == WHILE_OP)
+                                        if(popped_operator->value == WHILE_OP)
                                             combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
-                                        else if(popped_operator.value == UNTIL_OP)
+                                        else if(popped_operator->value == UNTIL_OP)
                                             combined_command = combine_two_commands(first_command, second_command, UNTIL_OP);
                                         else
                                             exit(180);
-                                        command_stack_push(&comstack, combined_command);
+                                        command_stack_push(&comstack, *combined_command);
                                     }   else {
                                         // error
                                         printf("error with compound command");
