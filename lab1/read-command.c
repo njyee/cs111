@@ -502,7 +502,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 // save word in words then reset
                 words[number_of_words] = (char*)malloc(sizeof(word)+1);
                 memcpy(words[number_of_words], word, sizeof(word)+1);
-                number_of_word++;
+                number_of_words++;
                 //words[number_of_words] = word;
                 // word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
@@ -618,9 +618,8 @@ make_command_stream (int (*get_next_byte) (void *),
                             break;
                 }
                 // if more than one word or zero words
-                if (number_of_words != 1) {
+                if (number_of_words != 1)
                     exit(56);
-                }
                 node = command_stack_top(&comstack);
                 if (r == '<') {
                     if (node->command->input)
@@ -782,11 +781,15 @@ make_command_stream (int (*get_next_byte) (void *),
                         struct command_node* popped_command_node = command_stack_pop(&comstack);
                         struct command_node* subshell_command_node = (struct command_node*)malloc(sizeof(struct command_node));
                         
+                        subshell_command_node->command = (struct command*)malloc(sizeof(struct command));
+                        
                         subshell_command_node->command->type         = SUBSHELL_COMMAND;
                         subshell_command_node->command->status       = -1;
                         subshell_command_node->command->input        = NULL;
                         subshell_command_node->command->output       = NULL;
                         subshell_command_node->command->u.command[0] = popped_command_node->command;
+                        
+                        command_stack_push(&comstack, *subshell_command_node);
                     } else {
                         // error
                         printf("error with compound command");
