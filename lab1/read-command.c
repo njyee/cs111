@@ -677,7 +677,6 @@ make_command_stream (int (*get_next_byte) (void *),
                 } else if(operator_type > operator_stack_top(&opstack)->value 
                             || operator_type == IF_OP || operator_type == WHILE_OP || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
                     operator_stack_push(&opstack, op_node);
-                    if (operator_type == THEN_OP || operator_type == )
                 } else {
                     struct operator_node *opstack_top = operator_stack_top(&opstack);
                     while ( (opstack_top->value != OPEN_PAREN_OP && opstack_top->value != THEN_OP
