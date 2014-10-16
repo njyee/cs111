@@ -594,10 +594,8 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             else if (c == '<' || c == '>') {
                 r = c;
-                if (follows != COMMAND) {
-                    // error
-                    exit(45);
-                }
+                if (follows != COMMAND)
+                    exit(45); // error
                 for (;;) {
                     c = get_next_byte(get_next_byte_argument);
                     
@@ -616,6 +614,7 @@ make_command_stream (int (*get_next_byte) (void *),
                         }
                         if (c != ' ' && c != '\t')
                             break;
+                    }
                 }
                 // if more than one word or zero words
                 if (number_of_words != 1)
