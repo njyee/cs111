@@ -382,7 +382,7 @@ make_command_stream (int (*get_next_byte) (void *),
     
     init_operator_stack(&opstack);
     init_command_stack(&comstack);
-    init_operator_stack(&special_words_stack);
+    init_operator_stack(&spec_op_stack);
     
     // init word (set all bytes to \0)
     word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
@@ -498,7 +498,10 @@ make_command_stream (int (*get_next_byte) (void *),
                     words[0] = NULL;
                     number_of_words = 0;
                 }
-                if (c == ';' || c == '|')
+                if (c == '(') {
+                    // if follows
+                }
+                else if (c == ';' || c == '|')
                 {
                     if (follows == COMMAND)
                     {
@@ -620,8 +623,8 @@ make_command_stream (int (*get_next_byte) (void *),
                                 }
                                 operator_stack_push(&opstack, op_node);
                                 if (is_special_word) {
-                                    if (!spec_op_stack->top) {
-                                        int top_operator_value = spec_op_stack->top->value;
+                                    if (!spec_op_stack.top) {
+                                        int top_operator_value = spec_op_stack.top->value;
                                         if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
                                            (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
                                            (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
