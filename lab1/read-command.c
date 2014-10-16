@@ -253,8 +253,14 @@ int get_operator_type(char *buf) {
         return THEN_OP;
     } else if(!strcmp(buf, "else")) {
         return ELSE_OP;
-    } else if(!strcmp(buf, "then")) {
-        return THEN_OP;
+    } else if(!strcmp(buf, "while")) {
+        return WHILE_OP;
+    } else if(!strcmp(buf, "until")) {
+        return UNTIL_OP;
+    } else if(!strcmp(buf, "do")) {
+        return DO_OP;
+    } else if(!strcmp(buf, "done")) {
+        return DONE_OP;
     } else if(!strcmp(buf, "fi")) {
         return FI_OP;
     } else if(!strcmp(buf, ";")) {
@@ -263,6 +269,10 @@ int get_operator_type(char *buf) {
         return NEWLINE_OP;
     } else if(!strcmp(buf, "|")) {
         return PIPE_OP;
+    } else if(!strcmp(buf, "(")) {
+        return OPEN_PAREN_OP;
+    } else if(!strcmp(buf, ")")) {
+        return CLOSE_PAREN_OP;
     } else
         return -1; // error: not an operator
 }
