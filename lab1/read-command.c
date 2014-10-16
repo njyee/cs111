@@ -455,6 +455,8 @@ make_command_stream (int (*get_next_byte) (void *),
                     if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) &&
                         follows != COMMAND && follows != SEMICOLON && follows != NEWLINE)
                         exit(89);
+                    if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) && follows == SEMICOLON)
+                        operator_stack_pop(&opstack);
                     special_word = word;
                     is_operator = 1;
                     if (strcmp(word, "fi") && strcmp(word, "done"))
