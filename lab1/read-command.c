@@ -402,7 +402,7 @@ make_command_stream (int (*get_next_byte) (void *),
     struct operator_stack spec_op_stack;
     
     
-    // init comstream
+    // init comstream. Dynamically allocated because needs to be returned
     comstream = (struct command_stream*)malloc(sizeof(struct command_stream));
     comstream->head = NULL;
     
@@ -423,15 +423,15 @@ make_command_stream (int (*get_next_byte) (void *),
     
     // init node (allocate node and command)
     node = (command_node_t)malloc(sizeof(struct command_node));
-    // my_command = (command_t)malloc(sizeof(struct command));
-    // node->command = my_command;
+    //node->command = NULL;
+    //node->next = NULL;
     init_node(node);
     
     for (;;)
     {
         // Reset
         is_operator = 0;
-        memset(special_word, 0, WORD_BUF_SIZE*sizeof(special_word));
+        memset(special_word, 0, sizeof(special_word));
 
         // get next byte
         if (!is_special_word) {
@@ -440,6 +440,7 @@ make_command_stream (int (*get_next_byte) (void *),
         // if(c == EOF)
         //     break;
         
+        // reset is_special_word
         is_special_word = 0;
         
         // if word char
@@ -600,7 +601,7 @@ make_command_stream (int (*get_next_byte) (void *),
                         memset(word, 0, WORD_BUF_SIZE*sizeof(word));
                     }
                     // if c is word char
-                    if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                    else if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
                           c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
                         // append to word
                         i = strlen(word);
@@ -608,7 +609,7 @@ make_command_stream (int (*get_next_byte) (void *),
                         word[++i] = '\0';
                     }
                     // else
-                    else {
+                    else if (c != ' ' && c != '\t') {
                         // end word
                         words[number_of_words++] = word;
                         word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
