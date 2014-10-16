@@ -36,7 +36,8 @@
 enum Elements
 {
     COMMAND,
-    OPERATOR,   // pipe or semicolon
+    PIPE,   // pipe or semicolon
+    SEMICOLON,
     NEWLINE,
     SPECIAL,    // close parenthesis and special words like "if"
     REDIRECT
@@ -116,6 +117,7 @@ struct command_node* command_stack_pop(struct command_stack *stack) {
     
     retval = stack->top; 
     stack->top = stack->top->next;
+    stack->size--;
     return retval;
 }
 
@@ -180,6 +182,7 @@ struct operator_node* operator_stack_pop(struct operator_stack *stack) {
     
     retval = stack->top;
     stack->top = stack->top->next;
+    stack->size--;
     return retval;
 }
 
@@ -439,9 +442,19 @@ make_command_stream (int (*get_next_byte) (void *),
                      !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
                      !strcmp(word, "do") || !strcmp(word, "done")))
                 {
+                    if (follows == COMMAND && (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until")))
+                        exit(234);
+                    if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) &&
+                        follows != COMMAND && follows != SEMICOLON && follows != NEWLINE)
+                        exit(89);
                     special_word = word;
+                    is_operator = 1;
                     if (strcmp(word, "fi") && strcmp(word, "done"))
                         follows = SPECIAL;
+                    else
+                        follows = COMMAND;
+                    
+                    
                     // if (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until"))
                     // {
                     //     // push onto operator stack
@@ -499,13 +512,28 @@ make_command_stream (int (*get_next_byte) (void *),
                     number_of_words = 0;
                 }
                 if (c == '(') {
-                    // if follows
+                    if (follows == COMMAND)
+                        exit(234);
+                    special_word = word;
+                    follows = SPECIAL;
+                    is_operator = 1;
+                }
+                else if (c == ')') {
+                    if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
+                        exit(78);
+                    }
+                    special_word = word;
+                    is_operator = 1;
                 }
                 else if (c == ';' || c == '|')
                 {
                     if (follows == COMMAND)
                     {
                         is_operator = 1;
+                        if (c == ';')
+                            follows = SEMICOLON;
+                        else
+                            follows = PIPE;
                     }
                     else {
                         // error
@@ -522,6 +550,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     }
                     else if (last_byte == ';')
                     {
+                        operator_stack_pop(&opstack);
                         follows = NEWLINE;
                     }
                 }
