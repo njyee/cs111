@@ -431,8 +431,9 @@ make_command_stream (int (*get_next_byte) (void *),
     {
         // Reset
         is_operator = 0;
-        memset(special_word, 0, sizeof(special_word));
-
+        //memset(special_word, 0, sizeof(*special_word));
+        memset(special_word, 0, WORD_BUF_SIZE*sizeof(char));
+        
         // get next byte
         if (!is_special_word) {
             c = get_next_byte(get_next_byte_argument);
@@ -499,13 +500,18 @@ make_command_stream (int (*get_next_byte) (void *),
                 } else {
                 
                 // save word in words then reset
-                words[number_of_words++] = word;
+                words[number_of_words] = (char*)malloc(sizeof(word)+1);
+                memcpy(words[number_of_words], word, sizeof(word)+1);
+                number_of_word++;
+                //words[number_of_words] = word;
                 // word = (char*) malloc(sizeof(word));
                 //word[0] = '\0';
                 //words[number_of_words] = (char*)malloc(sizeof(word));
                 //strcpy(words[number_of_words++], word);  // copy word into words[pos]            
                 }
-                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                
+                // reset word
+                //word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
                 memset(word, 0, WORD_BUF_SIZE*sizeof(word));
             }
             if (c == '#')
@@ -524,6 +530,7 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 follows = COMMAND;
                 // push simple command
+                //node->command = (command_t)malloc(sizeof(struct command));
                 node->command->type = SIMPLE_COMMAND;
                 node->command->status = EXECUTION_STATUS;
                 node->command->input = NULL;
@@ -538,7 +545,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 // node->command = my_command;
                 init_node(node);
                 words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
-                words[0] = NULL;
+                words[0] = NULL;  //used to check if words is empty in future if statements
                 number_of_words = 0;
             }
             if (c == '(') {
@@ -593,29 +600,22 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 for (;;) {
                     c = get_next_byte(get_next_byte_argument);
-                    // if c is whitespace
-                    if ((c == ' ' || c == '\t') && strlen(word) != 0) {
-                        // end word
-                        words[number_of_words++] = word;
-                        word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                        memset(word, 0, WORD_BUF_SIZE*sizeof(word));
-                    }
-                    // if c is word char
-                    else if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                    
+                    if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
                           c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
                         // append to word
                         i = strlen(word);
                         word[i] = c;
                         word[++i] = '\0';
-                    }
-                    // else
-                    else if (c != ' ' && c != '\t') {
-                        // end word
-                        words[number_of_words++] = word;
-                        word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                        memset(word, 0, WORD_BUF_SIZE*sizeof(word));
-                        break;
-                    }
+                    } else {
+                        if (strlen(word) > 0) {
+                            // end word
+                            words[number_of_words++] = word;
+                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));    
+                        }
+                        if (c != ' ' && c != '\t')
+                            break;
                 }
                 // if more than one word or zero words
                 if (number_of_words != 1) {
@@ -633,6 +633,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     else
                         node->command->output = words[0];
                 }
+                node = (struct command_node *) malloc(sizeof(struct command_node));
                 init_node(node);
                 words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                 words[0] = NULL;
