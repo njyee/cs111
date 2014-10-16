@@ -662,7 +662,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     if (spec_op_stack.top != NULL) {
                         int top_operator_value = spec_op_stack.top->value;
                         if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
-                          (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
+                          (operator_type == ELSE_OP && top_operator_value == THEN_OP)  ||
                           (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
                           (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
                           (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
