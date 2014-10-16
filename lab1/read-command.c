@@ -767,7 +767,7 @@ make_command_stream (int (*get_next_byte) (void *),
                         subshell_command_node->command->status       = -1;
                         subshell_command_node->command->input        = NULL;
                         subshell_command_node->command->output       = NULL;
-                        subshell_command_node->command->u.command[0] = popped_command_node;
+                        subshell_command_node->command->u.command[0] = popped_command_node->command;
                     } else {
                         // error
                         printf("error with compound command");
