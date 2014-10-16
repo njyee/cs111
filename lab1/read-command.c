@@ -297,6 +297,12 @@ int get_command_type(int op) {
         case PIPE_OP:
             return PIPE_COMMAND;
             break;
+        case WHILE_OP:
+            return WHILE_COMMAND;
+            break;
+        case UNTIL_OP:
+            return UNTIL_COMMAND;
+            break;
         default:
             //error
             return -1;
