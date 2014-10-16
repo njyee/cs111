@@ -523,7 +523,7 @@ make_command_stream (int (*get_next_byte) (void *),
             if (c == '(') {
                 if (follows == COMMAND)
                     exit(234);
-                special_word = word;
+                //special_word = word;
                 follows = SPECIAL;
                 is_operator = 1;
             }
@@ -531,7 +531,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
                     exit(78);
                 }
-                special_word = word;
+                // special_word = word;
                 is_operator = 1;
             }
             else if (c == ';' || c == '|')
@@ -643,6 +643,8 @@ make_command_stream (int (*get_next_byte) (void *),
                     operator_type = get_operator_type("\n");
                 else if (c == '|')
                     operator_type = get_operator_type("|");
+                else if(c == '(')
+                    operator_type = OPEN_PAREN_OP;
                 else if (c == EOF)
                     operator_type = EOF_OP;
                 
@@ -651,12 +653,31 @@ make_command_stream (int (*get_next_byte) (void *),
                 if(operator_type == IF_OP || operator_type == WHILE_OP
                         || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP)
                     operator_stack_push(&spec_op_stack, op_node);
+                else if (is_special_word) {
+                    if (spec_op_stack.top != NULL) {
+                        int top_operator_value = spec_op_stack.top->value;
+                        if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
+                          (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
+                          (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
+                          (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
+                          (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
+                          (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
+                          (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
+                          (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
+                                operator_stack_push(&spec_op_stack, op_node);
+                        } else 
+                                exit(312);
+                    } else {
+                        exit(313);
+                    }
+                }
                 
                 if(operator_stack_empty(&opstack)) {
                     operator_stack_push(&opstack, op_node);
                 } else if(operator_type > operator_stack_top(&opstack)->value 
                             || operator_type == IF_OP || operator_type == WHILE_OP || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
                     operator_stack_push(&opstack, op_node);
+                    if (operator_type == THEN_OP || operator_type == )
                 } else {
                     struct operator_node *opstack_top = operator_stack_top(&opstack);
                     while ( (opstack_top->value != OPEN_PAREN_OP && opstack_top->value != THEN_OP
@@ -676,24 +697,24 @@ make_command_stream (int (*get_next_byte) (void *),
                                     break;
                             }
                             operator_stack_push(&opstack, op_node);
-                            if (is_special_word) {
-                                if (spec_op_stack.top != NULL) {
-                                    int top_operator_value = spec_op_stack.top->value;
-                                    if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
-                                       (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
-                                       (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
-                                       (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
-                                       (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
-                                       (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
-                                       (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
-                                       (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
-                                            operator_stack_push(&spec_op_stack, op_node);
-                                    } else 
-                                            exit(312);
-                                } else {
-                                    exit(313);
-                                }
-                            }
+                            // if (is_special_word) {
+                            //     if (spec_op_stack.top != NULL) {
+                            //         int top_operator_value = spec_op_stack.top->value;
+                            //         if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
+                            //           (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
+                            //           (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
+                            //           (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
+                            //           (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
+                            //           (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
+                            //           (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
+                            //           (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
+                            //                 operator_stack_push(&spec_op_stack, op_node);
+                            //         } else 
+                            //                 exit(312);
+                            //     } else {
+                            //         exit(313);
+                            //     }
+                            // }
                             
                             
                             if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP
