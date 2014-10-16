@@ -617,11 +617,11 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             else if (c == EOF) {
                 is_operator = 1;
-                if (follows = SEMICOLON)
+                if (follows == SEMICOLON)
                     operator_stack_pop(&opstack);
                 else if (follows != COMMAND && follows != NEWLINE)
                     exit(90);
-                if (operator_stack_size(&spec_op_stack) || (follows != COMMAND && follows != NEWLINE))
+                if (operator_stack_size(&spec_op_stack))
                     exit(91);
             }
             if (is_operator)
