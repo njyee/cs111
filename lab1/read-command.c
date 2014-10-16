@@ -511,8 +511,8 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 
                 // reset word
-                //word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                memset(word, 0, WORD_BUF_SIZE*sizeof(char));
             }
             if (c == '#')
             {
