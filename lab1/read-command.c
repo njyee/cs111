@@ -614,6 +614,9 @@ make_command_stream (int (*get_next_byte) (void *),
                     words[0] = NULL;
                     number_of_words = 0;
                 }
+                else if (c == EOF) {
+                    is_operator = 1;
+                }
                 if (is_operator)
                 {
                     // follows = OPERATOR;
@@ -631,6 +634,8 @@ make_command_stream (int (*get_next_byte) (void *),
                         operator_type = get_operator_type("\n");
                     else if (c == '|')
                         operator_type = get_operator_type("|");
+                    else if (c == EOF)
+                        operator_type = EOF_OP;
                     
                     op_node.value = operator_type;
                     
