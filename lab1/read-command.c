@@ -49,6 +49,24 @@ struct command_stream
     command_node_t head;
 };
 
+// push node to top and increment size
+// returns void
+void command_stream_push(struct command_stream *stream, struct command_node node) {
+    if(stream->size == 0) {
+        //stack->top = (struct command_node*)malloc(sizeof(struct command_node));
+        stream->top = (struct command_node*)malloc(sizeof(node));
+        stream->top->next = NULL;
+        stream->top->command = node.command;
+        stream->size++;
+    } else {
+        //struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
+        struct command_node* temp = (struct command_node*)malloc(sizeof(struct command_node));
+        temp->command = node.command;
+        temp->next = stream->head;
+        stream->head = temp;
+    }
+}
+
 struct command_node
 {
     command_t      command; //lots of stuff is named command
@@ -94,6 +112,9 @@ void command_stack_push(struct command_stack *stack, struct command_node node) {
 struct command_node command_stack_pop(struct command_stack *stack) {
     struct command_node retval; 
     struct command_node *newtop;
+    
+    if (!stack->size)
+        return NULL;
     
     retval = *(stack->top); 
     newtop = stack->top->next;
@@ -158,6 +179,8 @@ void operator_stack_push( struct operator_stack *stack, struct operator_node nod
 struct operator_node operator_stack_pop(struct operator_stack *stack) {
     struct operator_node retval = *(stack->top);
     struct operator_node *temp = stack->top->next;
+    if (!stack->size)
+        return NULL;
     free(stack->top);
     stack->top = temp;
     return retval;
@@ -591,12 +614,12 @@ make_command_stream (int (*get_next_byte) (void *),
                     if(operator_stack_empty(&opstack)) {
                         operator_stack_push(&opstack, op_node);
                     } else if(operator_type > operator_stack_top(&opstack)->value 
-                                || operator_type == IF_OP) {
+                                || operator_type == IF_OP || WHILE_OP || UNTIL_OP) {
                         operator_stack_push(&opstack, op_node);
                     } else {
                         struct operator_node *opstack_top = operator_stack_top(&opstack);
                         while ( (opstack_top->value != OPEN_PAREN_OP || opstack_top->value != THEN_OP
-                                || opstack_top->value != ELSE_OP || opstack_top->value != IF_OP )
+                                || opstack_top->value != ELSE_OP || opstack_top->value != IF_OP || opstack_top->value != DO_OP )
                                 && operator_type <= opstack_top->value) {
                                     struct operator_node popped_operator = operator_stack_pop(&opstack);
                                     struct command_node second_command   = command_stack_pop(&comstack);
@@ -610,8 +633,8 @@ make_command_stream (int (*get_next_byte) (void *),
                                         break;
                                 }
                                 operator_stack_push(&opstack, op_node);
-                                if(operator_stack_top(&opstack)->value == FI_OP) {
-                                    operator_stack_pop(&opstack);  // don't need FI_OP
+                                if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) {
+                                    operator_stack_pop(&opstack);  // don't need FI_OP or DONE_OP
                                     struct operator_node popped_operator = operator_stack_pop(&opstack);
                                     if(popped_operator.value == ELSE_OP) {
                                         struct command_node third_command  = command_stack_pop(&comstack);
@@ -627,7 +650,19 @@ make_command_stream (int (*get_next_byte) (void *),
                                         struct command_node combined_command    = combine_two_commands(first_command, second_command, IF_OP);
                                         command_stack_push(&comstack, combined_command);
                                         operator_stack_pop(&opstack); //should be popping IF_OP
-                                    } else {
+                                    } else if(popped_operator.value == DO_OP) {
+                                        struct command_node second_command = command_stack_pop(&comstack);
+                                        struct command_node first_command  = command_stack_pop(&comstack);
+                                        struct command_node combined_command;
+                                        popped_operator = operator_stack_pop(&opstack);  // should be WHILE_OP or UNTIL_OP nodes
+                                        if(popped_operator.value == WHILE_OP)
+                                            combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
+                                        else if(popped_operator.value == UNTIL_OP)
+                                            combined_command = combine_two_commands(first_command, second_command, UNTIL_OP);
+                                        else
+                                            exit(180);
+                                        command_stack_push(&comstack, combined_command);
+                                    }   else {
                                         // error
                                         printf("error with compound command");
                                         exit(34);
@@ -676,7 +711,10 @@ make_command_stream (int (*get_next_byte) (void *),
     //     // Do some processing if necessary. 
     // }
 
-    comstream.head = comstack.top;
+    while (!command_stack_empty(&comstack)) {
+        node = command_stack_pop(&comstack);
+        command_stream_push(&comstream, *node);   
+    }
     
     return &comstream;  // We are C hackers
 }
