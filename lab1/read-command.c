@@ -445,9 +445,9 @@ make_command_stream (int (*get_next_byte) (void *),
                 // if first word
                 //if (sizeof(words) == 0)
                 if(words[0] == NULL &&
-                    (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until") ||
-                     !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
-                     !strcmp(word, "do") || !strcmp(word, "done")))
+                   (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until") ||
+                    !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
+                    !strcmp(word, "do") || !strcmp(word, "done")))
                 {
                     is_special_word = 1;
                     if (follows == COMMAND && (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until")))
@@ -618,7 +618,7 @@ make_command_stream (int (*get_next_byte) (void *),
             else if (c == EOF) {
                 is_operator = 1;
                 if (follows == SEMICOLON)
-                    operator_stack_pop(&opstack);
+                    operator_stack_pop(&opstack); //pop the automatically added semicolon
                 else if (follows != COMMAND && follows != NEWLINE)
                     exit(90);
                 if (operator_stack_size(&spec_op_stack))
@@ -646,6 +646,10 @@ make_command_stream (int (*get_next_byte) (void *),
                 
                 op_node.value = operator_type;
                 
+                if(operator_type == IF_OP || operator_type == WHILE_OP
+                        || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP)
+                    operator_stack_push(&spec_op_stack, op_node);
+                
                 if(operator_stack_empty(&opstack)) {
                     operator_stack_push(&opstack, op_node);
                 } else if(operator_type > operator_stack_top(&opstack)->value 
@@ -671,7 +675,7 @@ make_command_stream (int (*get_next_byte) (void *),
                             }
                             operator_stack_push(&opstack, op_node);
                             if (is_special_word) {
-                                if (!spec_op_stack.top) {
+                                if (spec_op_stack.top != NULL) {
                                     int top_operator_value = spec_op_stack.top->value;
                                     if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
                                        (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
@@ -690,10 +694,12 @@ make_command_stream (int (*get_next_byte) (void *),
                             }
                             
                             
-                            if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) 
+                            if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP
+                                    || operator_stack_top(&opstack)->value == CLOSE_PAREN_OP) 
                             {
                                 follows = COMMAND;
-                                free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP
+                                free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP or CLOSE_PAREN_OP
+                                free(operator_stack_pop(&spec_op_stack));
                                 struct operator_node *popped_operator = operator_stack_pop(&opstack);
                                 if(popped_operator->value == ELSE_OP) {
                                     struct command_node* third_command  = command_stack_pop(&comstack);
@@ -703,17 +709,21 @@ make_command_stream (int (*get_next_byte) (void *),
                                     command_stack_push(&comstack, *combined_command);
                                     free(operator_stack_pop(&opstack)); //should be popping THEN_OP
                                     free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                    free(operator_stack_pop(&spec_op_stack));
+                                    free(operator_stack_pop(&spec_op_stack));
                                 } else if(popped_operator->value == THEN_OP) {
                                     struct command_node* second_command = command_stack_pop(&comstack);
                                     struct command_node* first_command  = command_stack_pop(&comstack);
                                     struct command_node* combined_command    = combine_two_commands(first_command, second_command, IF_OP);
                                     command_stack_push(&comstack, *combined_command);
                                     free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                    free(operator_stack_pop(&spec_op_stack));
                                 } else if(popped_operator->value == DO_OP) {
                                     struct command_node* second_command = command_stack_pop(&comstack);
                                     struct command_node* first_command  = command_stack_pop(&comstack);
                                     struct command_node* combined_command;
                                     popped_operator = operator_stack_pop(&opstack);  // should be WHILE_OP or UNTIL_OP nodes
+                                    free(operator_stack_pop(&spec_op_stack));
                                     if(popped_operator->value == WHILE_OP)
                                         combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
                                     else if(popped_operator->value == UNTIL_OP)
@@ -721,7 +731,9 @@ make_command_stream (int (*get_next_byte) (void *),
                                     else
                                         exit(180);
                                     command_stack_push(&comstack, *combined_command);
-                                }   else {
+                                } else if(popped_operator->value == OPEN_PAREN_OP){ 
+                                    comstack.top->command->type = SUBSHELL_COMMAND;
+                                } else {
                                     // error
                                     printf("error with compound command");
                                     exit(34);
@@ -764,6 +776,8 @@ make_command_stream (int (*get_next_byte) (void *),
             break;
         last_byte = c;
     }
+    
+    
     
     // commented out to not create infinite loop
     // while(!operator_stack_empty(&opstack))

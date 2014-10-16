@@ -17,7 +17,6 @@
 
 // Used for precedence 
 enum operator_type {
-  EOF_OP,
   OPEN_PAREN_OP,
   WHILE_OP,
   UNTIL_OP,
