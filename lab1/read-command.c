@@ -759,7 +759,14 @@ make_command_stream (int (*get_next_byte) (void *),
                             exit(180);
                         command_stack_push(&comstack, *combined_command);
                     } else if(popped_operator->value == OPEN_PAREN_OP){ 
-                        comstack.top->command->type = SUBSHELL_COMMAND;
+                        struct command_node* popped_command_node = command_stack_pop(&comstack);
+                        struct command_node* subshell_command_node = (struct command_node*)malloc(sizeof(struct command_node));
+                        
+                        subshell_command_node->command->type         = SUBSHELL_COMMAND;
+                        subshell_command_node->command->status       = -1;
+                        subshell_command_node->command->input        = NULL;
+                        subshell_command_node->command->output       = NULL;
+                        subshell_command_node->command->u.command[0] = popped_command_node;
                     } else {
                         // error
                         printf("error with compound command");

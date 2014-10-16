@@ -27,10 +27,10 @@ enum operator_type {
   ELSE_OP,
   DONE_OP,
   FI_OP,
+  CLOSE_PAREN_OP,
   SEMICOLON_OP,
   NEWLINE_OP,
   PIPE_OP,
-  CLOSE_PAREN_OP,
 };
 
 enum command_type
