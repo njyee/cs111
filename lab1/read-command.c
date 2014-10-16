@@ -617,6 +617,12 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             else if (c == EOF) {
                 is_operator = 1;
+                if (follows = SEMICOLON)
+                    operator_stack_pop(&opstack);
+                else if (follows != COMMAND && follows != NEWLINE)
+                    exit(90);
+                if (operator_stack_size(&spec_op_stack) || (follows != COMMAND && follows != NEWLINE))
+                    exit(91);
             }
             if (is_operator)
             {
@@ -686,6 +692,7 @@ make_command_stream (int (*get_next_byte) (void *),
                             
                             if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) 
                             {
+                                follows = COMMAND;
                                 free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP
                                 struct operator_node *popped_operator = operator_stack_pop(&opstack);
                                 if(popped_operator->value == ELSE_OP) {
