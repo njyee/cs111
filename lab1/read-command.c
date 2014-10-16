@@ -414,6 +414,7 @@ make_command_stream (int (*get_next_byte) (void *),
     {
         // Reset
         is_operator = 0;
+        is_special_word = 0;
         memset(special_word, 0, WORD_BUF_SIZE*sizeof(special_word));
 
         // get next byte
@@ -448,6 +449,7 @@ make_command_stream (int (*get_next_byte) (void *),
                      !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
                      !strcmp(word, "do") || !strcmp(word, "done")))
                 {
+                    is_special_word = 1;
                     if (follows == COMMAND && (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until")))
                         exit(234);
                     if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) &&
@@ -483,273 +485,271 @@ make_command_stream (int (*get_next_byte) (void *),
                 word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
                 memset(word, 0, WORD_BUF_SIZE*sizeof(word));
             }
-            if (c != ' ' && c != '\t') {
-                if (c == '#')
-                {
-                    // ignore remaining characters until reach newline
-                    // for (;;) {
-                    //     c = get_next_byte(get_next_byte_argument);
-                    //     if (c == '\n' || c == EOF)
-                    //         break;
-                    // }
-                    do {
-                        c = get_next_byte(get_next_byte_argument);
-                    } while (c != '\n' && c != EOF);
+            if (c == '#')
+            {
+                // ignore remaining characters until reach newline
+                // for (;;) {
+                //     c = get_next_byte(get_next_byte_argument);
+                //     if (c == '\n' || c == EOF)
+                //         break;
+                // }
+                do {
+                    c = get_next_byte(get_next_byte_argument);
+                } while (c != '\n' && c != EOF);
+            }
+            if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
+            {
+                follows = COMMAND;
+                // push simple command
+                node->command->type = SIMPLE_COMMAND;
+                node->command->status = EXECUTION_STATUS;
+                node->command->input = NULL;
+                node->command->output = NULL;
+                node->command->u.word = words;  // might not work. Might need to do a form of memcpy instead.
+                // node->command->u.command[0] = NULL;
+                command_stack_push(&comstack, *node);
+                
+                // reset
+                // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
+                // my_command = (command_t)malloc(sizeof(struct command));
+                // node->command = my_command;
+                init_node(node);
+                words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                words[0] = NULL;
+                number_of_words = 0;
+            }
+            if (c == '(') {
+                if (follows == COMMAND)
+                    exit(234);
+                special_word = word;
+                follows = SPECIAL;
+                is_operator = 1;
+            }
+            else if (c == ')') {
+                if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
+                    exit(78);
                 }
-                if (words[0] != NULL) // then simple command
+                special_word = word;
+                is_operator = 1;
+            }
+            else if (c == ';' || c == '|')
+            {
+                if (follows == COMMAND)
                 {
-                    follows = COMMAND;
-                    // push simple command
-                    node->command->type = SIMPLE_COMMAND;
-                    node->command->status = EXECUTION_STATUS;
-                    node->command->input = NULL;
-                    node->command->output = NULL;
-                    node->command->u.word = words;  // might not work. Might need to do a form of memcpy instead.
-                    // node->command->u.command[0] = NULL;
-                    command_stack_push(&comstack, *node);
-                    
-                    // reset
-                    // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
-                    // my_command = (command_t)malloc(sizeof(struct command));
-                    // node->command = my_command;
-                    init_node(node);
-                    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
-                    words[0] = NULL;
-                    number_of_words = 0;
-                }
-                if (c == '(') {
-                    if (follows == COMMAND)
-                        exit(234);
-                    special_word = word;
-                    follows = SPECIAL;
                     is_operator = 1;
-                }
-                else if (c == ')') {
-                    if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
-                        exit(78);
-                    }
-                    special_word = word;
-                    is_operator = 1;
-                }
-                else if (c == ';' || c == '|')
-                {
-                    if (follows == COMMAND)
-                    {
-                        is_operator = 1;
-                        if (c == ';')
-                            follows = SEMICOLON;
-                        else
-                            follows = PIPE;
-                    }
-                    else {
-                        // error
-                        printf("operator %c does not follow command", c);
-                        exit(23);
-                    }
-                }
-                else if (c == '\n')
-                {
-                    if (follows == COMMAND)
-                    {
-                        c = ';';
-                        is_operator = 1;
+                    if (c == ';')
                         follows = SEMICOLON;
-                    }
-                    else if (last_byte == ';')
-                    {
-                        operator_stack_pop(&opstack);
-                        follows = NEWLINE;
-                    }
+                    else
+                        follows = PIPE;
                 }
-                else if (c == '<' || c == '>') {
-                    r = c;
-                    if (follows != COMMAND) {
-                        // error
-                        exit(45);
-                    }
-                    for (;;) {
-                        c = get_next_byte(get_next_byte_argument);
-                        // if c is whitespace
-                        if ((c == ' ' || c == '\t') && strlen(word) != 0) {
-                            // end word
-                            words[number_of_words++] = word;
-                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));
-                        }
-                        // if c is word char
-                        if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
-                              c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
-                            // append to word
-                            i = strlen(word);
-                            word[i] = c;
-                            word[++i] = '\0';
-                        }
-                        // else
-                        else {
-                            // end word
-                            words[number_of_words++] = word;
-                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));
-                            break;
-                        }
-                    }
-                    // if more than one word or zero words
-                    if (number_of_words != 1) {
-                        exit(56);
-                    }
-                    node = command_stack_top(&comstack);
-                    if (r == '<') {
-                        if (node->command->input)
-                            exit (67);
-                        else
-                            node->command->input = words[0];
-                    } else {
-                        if (node->command->output)
-                            exit (78);
-                        else
-                            node->command->output = words[0];
-                    }
-                    init_node(node);
-                    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
-                    words[0] = NULL;
-                    number_of_words = 0;
+                else {
+                    // error
+                    printf("operator %c does not follow command", c);
+                    exit(23);
                 }
-                else if (c == EOF) {
-                    is_operator = 1;
-                }
-                if (is_operator)
+            }
+            else if (c == '\n')
+            {
+                if (follows == COMMAND)
                 {
-                    // follows = OPERATOR;
-                    // get operator type from operator string
-                    // char *operator_string = (char*)malloc(sizeof(c)+1);
-                    // strcpy(operator_string, &c);
-                    //int operator_type = get_operator_type(operator_string);  //operator_string is made up
-                    int operator_type = -1; // default
-                    struct operator_node op_node;
-                    if (is_special_word)
-                        operator_type = get_operator_type(special_word);
-                    else if (c == ';')
-                        operator_type = get_operator_type(";");
-                    else if (c == '\n')
-                        operator_type = get_operator_type("\n");
-                    else if (c == '|')
-                        operator_type = get_operator_type("|");
-                    else if (c == EOF)
-                        operator_type = EOF_OP;
-                    
-                    op_node.value = operator_type;
-                    
-                    if(operator_stack_empty(&opstack)) {
-                        operator_stack_push(&opstack, op_node);
-                    } else if(operator_type > operator_stack_top(&opstack)->value 
-                                || operator_type == IF_OP || operator_type == WHILE_OP || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
-                        operator_stack_push(&opstack, op_node);
-                    } else {
-                        struct operator_node *opstack_top = operator_stack_top(&opstack);
-                        while ( (opstack_top->value != OPEN_PAREN_OP && opstack_top->value != THEN_OP
-                                && opstack_top->value != ELSE_OP && opstack_top->value != IF_OP 
-                                && opstack_top->value != DO_OP && opstack_top->value != WHILE_OP
-                                && opstack_top->value != UNTIL_OP)
-                                && operator_type <= opstack_top->value) {
-                                    struct operator_node *popped_operator = operator_stack_pop(&opstack);
-                                    struct command_node *second_command   = command_stack_pop(&comstack);
-                                    struct command_node *first_command    = command_stack_pop(&comstack);
-                                    struct command_node *combined_command = combine_two_commands(first_command, second_command, popped_operator->value);
-                                    
-                                    command_stack_push(&comstack, *combined_command);
-                                    
-                                    opstack_top = operator_stack_top(&opstack);
-                                    if(opstack_top == NULL)
-                                        break;
-                                }
-                                operator_stack_push(&opstack, op_node);
-                                if (is_special_word) {
-                                    if (!spec_op_stack.top) {
-                                        int top_operator_value = spec_op_stack.top->value;
-                                        if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
-                                           (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
-                                           (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
-                                           (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
-                                           (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
-                                           (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
-                                           (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
-                                           (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
-                                                operator_stack_push(&spec_op_stack, op_node);
-                                        } else 
-                                                exit(312);
-                                    } else {
-                                        exit(313);
-                                    }
-                                }
-                                
-                                
-                                if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) 
-                                {
-                                    free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP
-                                    struct operator_node *popped_operator = operator_stack_pop(&opstack);
-                                    if(popped_operator->value == ELSE_OP) {
-                                        struct command_node* third_command  = command_stack_pop(&comstack);
-                                        struct command_node* second_command = command_stack_pop(&comstack);
-                                        struct command_node* first_command  = command_stack_pop(&comstack);
-                                        struct command_node* combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
-                                        command_stack_push(&comstack, *combined_command);
-                                        free(operator_stack_pop(&opstack)); //should be popping THEN_OP
-                                        free(operator_stack_pop(&opstack)); //should be popping IF_OP
-                                    } else if(popped_operator->value == THEN_OP) {
-                                        struct command_node* second_command = command_stack_pop(&comstack);
-                                        struct command_node* first_command  = command_stack_pop(&comstack);
-                                        struct command_node* combined_command    = combine_two_commands(first_command, second_command, IF_OP);
-                                        command_stack_push(&comstack, *combined_command);
-                                        free(operator_stack_pop(&opstack)); //should be popping IF_OP
-                                    } else if(popped_operator->value == DO_OP) {
-                                        struct command_node* second_command = command_stack_pop(&comstack);
-                                        struct command_node* first_command  = command_stack_pop(&comstack);
-                                        struct command_node* combined_command;
-                                        popped_operator = operator_stack_pop(&opstack);  // should be WHILE_OP or UNTIL_OP nodes
-                                        if(popped_operator->value == WHILE_OP)
-                                            combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
-                                        else if(popped_operator->value == UNTIL_OP)
-                                            combined_command = combine_two_commands(first_command, second_command, UNTIL_OP);
-                                        else
-                                            exit(180);
-                                        command_stack_push(&comstack, *combined_command);
-                                    }   else {
-                                        // error
-                                        printf("error with compound command");
-                                        exit(34);
-                                    }
-                                    
-                                }
-                    }
-                    
-                    
-                    // if encounter new commands (simple command)
-                    //     put them on command stack
-                    // if encounter new operator
-                    //     if operator_stack == NULL
-                    //         Add new operator to operator stack
-                    //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
-                    //         Add new oparator to operator stack
-                    //     else
-                    //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
-                    //           {
-                    //             operator = operator-stack.pop()
-                    //             second-command = command-stack.pop()
-                    //             first-command = command-stack.pop()
-                    //             new-command = combine(first-command, second-command, operator)
-                    //             command-stack.push(new-command)
-                    //             top-operator = operator-stack.peek()
-                    //             if top-operator == NULL
-                    //                 break;
-                    //           }
-                    //         operator-stack.push(new_operator)
-                    //         if(operator-stack.top == "fi")
-                    //             operator-stack.pop()
-                    //             if(operator-stack.top == "then")
-                    //                 pop and process twice
-                    //             else if(operator-stack.top == "else")
-                    //                 pop and process 3 times
+                    c = ';';
+                    is_operator = 1;
+                    follows = SEMICOLON;
                 }
+                else if (last_byte == ';')
+                {
+                    operator_stack_pop(&opstack);
+                    follows = NEWLINE;
+                }
+            }
+            else if (c == '<' || c == '>') {
+                r = c;
+                if (follows != COMMAND) {
+                    // error
+                    exit(45);
+                }
+                for (;;) {
+                    c = get_next_byte(get_next_byte_argument);
+                    // if c is whitespace
+                    if ((c == ' ' || c == '\t') && strlen(word) != 0) {
+                        // end word
+                        words[number_of_words++] = word;
+                        word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                        memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+                    }
+                    // if c is word char
+                    if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                          c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
+                        // append to word
+                        i = strlen(word);
+                        word[i] = c;
+                        word[++i] = '\0';
+                    }
+                    // else
+                    else {
+                        // end word
+                        words[number_of_words++] = word;
+                        word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                        memset(word, 0, WORD_BUF_SIZE*sizeof(word));
+                        break;
+                    }
+                }
+                // if more than one word or zero words
+                if (number_of_words != 1) {
+                    exit(56);
+                }
+                node = command_stack_top(&comstack);
+                if (r == '<') {
+                    if (node->command->input)
+                        exit (67);
+                    else
+                        node->command->input = words[0];
+                } else {
+                    if (node->command->output)
+                        exit (78);
+                    else
+                        node->command->output = words[0];
+                }
+                init_node(node);
+                words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                words[0] = NULL;
+                number_of_words = 0;
+            }
+            else if (c == EOF) {
+                is_operator = 1;
+            }
+            if (is_operator)
+            {
+                // follows = OPERATOR;
+                // get operator type from operator string
+                // char *operator_string = (char*)malloc(sizeof(c)+1);
+                // strcpy(operator_string, &c);
+                //int operator_type = get_operator_type(operator_string);  //operator_string is made up
+                int operator_type = -1; // default
+                struct operator_node op_node;
+                if (is_special_word)
+                    operator_type = get_operator_type(special_word);
+                else if (c == ';')
+                    operator_type = get_operator_type(";");
+                else if (c == '\n')
+                    operator_type = get_operator_type("\n");
+                else if (c == '|')
+                    operator_type = get_operator_type("|");
+                else if (c == EOF)
+                    operator_type = EOF_OP;
+                
+                op_node.value = operator_type;
+                
+                if(operator_stack_empty(&opstack)) {
+                    operator_stack_push(&opstack, op_node);
+                } else if(operator_type > operator_stack_top(&opstack)->value 
+                            || operator_type == IF_OP || operator_type == WHILE_OP || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
+                    operator_stack_push(&opstack, op_node);
+                } else {
+                    struct operator_node *opstack_top = operator_stack_top(&opstack);
+                    while ( (opstack_top->value != OPEN_PAREN_OP && opstack_top->value != THEN_OP
+                            && opstack_top->value != ELSE_OP && opstack_top->value != IF_OP 
+                            && opstack_top->value != DO_OP && opstack_top->value != WHILE_OP
+                            && opstack_top->value != UNTIL_OP)
+                            && operator_type <= opstack_top->value) {
+                                struct operator_node *popped_operator = operator_stack_pop(&opstack);
+                                struct command_node *second_command   = command_stack_pop(&comstack);
+                                struct command_node *first_command    = command_stack_pop(&comstack);
+                                struct command_node *combined_command = combine_two_commands(first_command, second_command, popped_operator->value);
+                                
+                                command_stack_push(&comstack, *combined_command);
+                                
+                                opstack_top = operator_stack_top(&opstack);
+                                if(opstack_top == NULL)
+                                    break;
+                            }
+                            operator_stack_push(&opstack, op_node);
+                            if (is_special_word) {
+                                if (!spec_op_stack.top) {
+                                    int top_operator_value = spec_op_stack.top->value;
+                                    if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
+                                       (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
+                                       (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
+                                       (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
+                                       (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
+                                       (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
+                                       (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
+                                       (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
+                                            operator_stack_push(&spec_op_stack, op_node);
+                                    } else 
+                                            exit(312);
+                                } else {
+                                    exit(313);
+                                }
+                            }
+                            
+                            
+                            if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP) 
+                            {
+                                free(operator_stack_pop(&opstack));  // don't need FI_OP or DONE_OP
+                                struct operator_node *popped_operator = operator_stack_pop(&opstack);
+                                if(popped_operator->value == ELSE_OP) {
+                                    struct command_node* third_command  = command_stack_pop(&comstack);
+                                    struct command_node* second_command = command_stack_pop(&comstack);
+                                    struct command_node* first_command  = command_stack_pop(&comstack);
+                                    struct command_node* combined_command    = combine_three_commands(first_command, second_command, third_command, IF_OP);
+                                    command_stack_push(&comstack, *combined_command);
+                                    free(operator_stack_pop(&opstack)); //should be popping THEN_OP
+                                    free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                } else if(popped_operator->value == THEN_OP) {
+                                    struct command_node* second_command = command_stack_pop(&comstack);
+                                    struct command_node* first_command  = command_stack_pop(&comstack);
+                                    struct command_node* combined_command    = combine_two_commands(first_command, second_command, IF_OP);
+                                    command_stack_push(&comstack, *combined_command);
+                                    free(operator_stack_pop(&opstack)); //should be popping IF_OP
+                                } else if(popped_operator->value == DO_OP) {
+                                    struct command_node* second_command = command_stack_pop(&comstack);
+                                    struct command_node* first_command  = command_stack_pop(&comstack);
+                                    struct command_node* combined_command;
+                                    popped_operator = operator_stack_pop(&opstack);  // should be WHILE_OP or UNTIL_OP nodes
+                                    if(popped_operator->value == WHILE_OP)
+                                        combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
+                                    else if(popped_operator->value == UNTIL_OP)
+                                        combined_command = combine_two_commands(first_command, second_command, UNTIL_OP);
+                                    else
+                                        exit(180);
+                                    command_stack_push(&comstack, *combined_command);
+                                }   else {
+                                    // error
+                                    printf("error with compound command");
+                                    exit(34);
+                                }
+                                
+                            }
+                }
+                
+                
+                // if encounter new commands (simple command)
+                //     put them on command stack
+                // if encounter new operator
+                //     if operator_stack == NULL
+                //         Add new operator to operator stack
+                //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
+                //         Add new oparator to operator stack
+                //     else
+                //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
+                //           {
+                //             operator = operator-stack.pop()
+                //             second-command = command-stack.pop()
+                //             first-command = command-stack.pop()
+                //             new-command = combine(first-command, second-command, operator)
+                //             command-stack.push(new-command)
+                //             top-operator = operator-stack.peek()
+                //             if top-operator == NULL
+                //                 break;
+                //           }
+                //         operator-stack.push(new_operator)
+                //         if(operator-stack.top == "fi")
+                //             operator-stack.pop()
+                //             if(operator-stack.top == "then")
+                //                 pop and process twice
+                //             else if(operator-stack.top == "else")
+                //                 pop and process 3 times
             }
         }
 
