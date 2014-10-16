@@ -762,7 +762,7 @@ make_command_stream (int (*get_next_byte) (void *),
         //command_stream_push(&comstream, *node);   
     }
     
-    return &comstream;  // We are C hackers
+    return comstream;  // We are C hackers
 }
 
 command_t
