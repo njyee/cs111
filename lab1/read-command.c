@@ -199,53 +199,53 @@ int operator_stack_size(struct operator_stack * stack) {
     return stack->size;
 }
 
-// checks if c is an 'other' token as specified in spec
-int is_other_character(char c) {
-    if(c == '!')
-        return 1;
-    else if(c == '+')
-        return 1;
-    else if(c == ',')
-        return 1;
-    else if(c == '-')
-        return 1;
-    else if(c == '.')
-        return 1;
-    else if(c == '/')
-        return 1;
-    else if(c == ':')
-        return 1;
-    else if(c == '@')
-        return 1;
-    else if(c == '^')
-        return 1;
-    else if(c == '_')
-        return 1;
-    else 
-        return 0;
-}
+// // checks if c is an 'other' token as specified in spec
+// int is_other_character(char c) {
+//     if(c == '!')
+//         return 1;
+//     else if(c == '+')
+//         return 1;
+//     else if(c == ',')
+//         return 1;
+//     else if(c == '-')
+//         return 1;
+//     else if(c == '.')
+//         return 1;
+//     else if(c == '/')
+//         return 1;
+//     else if(c == ':')
+//         return 1;
+//     else if(c == '@')
+//         return 1;
+//     else if(c == '^')
+//         return 1;
+//     else if(c == '_')
+//         return 1;
+//     else 
+//         return 0;
+// }
 
-// checks if c is a 'special' token
-int is_special_token(char c){
-    if(c == ';')
-        return 1;
-    else if(c == '|')
-        return 1;
-    else if(c == '(')
-        return 1;
-    else if(c == ')')
-        return 1;
-    else if(c == '<')
-        return 1;
-    else if(c == '>')
-        return 1;
-    else
-        return 0;
-}
+// // checks if c is a 'special' token
+// int is_special_token(char c){
+//     if(c == ';')
+//         return 1;
+//     else if(c == '|')
+//         return 1;
+//     else if(c == '(')
+//         return 1;
+//     else if(c == ')')
+//         return 1;
+//     else if(c == '<')
+//         return 1;
+//     else if(c == '>')
+//         return 1;
+//     else
+//         return 0;
+// }
 
 int is_valid_character(char c) {
-    return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
-    // return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>",c) != NULL)
+    //return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
+    return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>" , c) != NULL);
 }
 
 int get_operator_type(char *buf) {
@@ -451,10 +451,10 @@ make_command_stream (int (*get_next_byte) (void *),
         // get next byte
         if (!is_special_word && !is_redirect) {
             c = get_next_byte(get_next_byte_argument);
-            // if(!is_valid_character(c)){
-            //     strcpy(error_description, "invalid character");
-            //     print_error_message(line_number_ref, error_description);
-            // }
+             if(!is_valid_character(c)) {
+                 strcpy(error_description, "invalid character");
+                 print_error_message(line_number_ref, error_description);
+             }
         }
         // if(c == EOF)
         //     break;
