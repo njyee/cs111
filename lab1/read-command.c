@@ -633,7 +633,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 node = (struct command_node *) malloc(sizeof(struct command_node));
                 init_node(node);
-                words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                // words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                 words[0] = NULL;
                 number_of_words = 0;
             }
@@ -673,9 +673,11 @@ make_command_stream (int (*get_next_byte) (void *),
                 op_node.value = operator_type;
                 
                 if(operator_type == IF_OP || operator_type == WHILE_OP
-                        || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP)
+                        || operator_type == UNTIL_OP || operator_type == OPEN_PAREN_OP) {
                     operator_stack_push(&spec_op_stack, op_node);
-                else if (is_special_word) {
+                } else if(operator_type == CLOSE_PAREN_OP && spec_op_stack.top != NULL && spec_op_stack.top->value == OPEN_PAREN_OP) {
+                    operator_stack_push(&spec_op_stack, op_node);
+                } else if (is_special_word) {
                     if (spec_op_stack.top != NULL) {
                         int top_operator_value = spec_op_stack.top->value;
                         if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||

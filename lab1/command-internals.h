@@ -16,7 +16,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Used for precedence 
-enum operator_type {
+enum operator_type 
+{
   EOF_OP,
   OPEN_PAREN_OP,
   WHILE_OP,
@@ -32,6 +33,7 @@ enum operator_type {
   NEWLINE_OP,
   PIPE_OP,
 };
+
 
 enum command_type
   {
