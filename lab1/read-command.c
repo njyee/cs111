@@ -588,6 +588,10 @@ make_command_stream (int (*get_next_byte) (void *),
                     is_operator = 1;
                 }
                 else if (c == ')') {
+                    if (spec_op_stack.top == NULL || spec_op_stack.top->value != OPEN_PAREN_OP) {
+                        strcpy(error_description, "no preceding (");
+                        print_error_message(line_number_ref, error_description);
+                    }
                     if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
                         // exit(78);
                         strcpy(error_description, ") must follow command, semicolon, or newline");
