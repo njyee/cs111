@@ -390,7 +390,7 @@ make_command_stream (int (*get_next_byte) (void *),
     int is_redirect = 0;
     int last_byte = 0;
     int number_of_words = 0;  // index for appending word
-    int line_number_ref = 0;  // keep track of line number in case of error. 
+    int line_number_ref = 1;  // keep track of line number in case of error. 
     
     //char word[100];
     //char* words[100];

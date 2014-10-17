@@ -1,4 +1,15 @@
-This is a skeleton for CS 111 Lab 1.
+Nicholas Yee
+803946252
+njyee@ucla.edu
 
-Replace this README file with notes on your implementation.
-Mentions any special features or limitations.
+Thomas Lutton
+304180703
+tlutton@ucla.edu
+
+make check passes all test cases.
+
+Limitations:
+Arbitrary size limit of 100 imposed on char arrays and char* arrays.
+Some dynamically allocated memory may not be freed due to early stage of project.
+
+Both limitations will be fixed in subsequent versions of Lab 1. 
