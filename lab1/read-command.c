@@ -245,7 +245,7 @@ int operator_stack_size(struct operator_stack * stack) {
 
 int is_valid_character(char c) {
     //return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
-    return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>" , c) != NULL);
+    return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>" , c) != NULL) || c == EOF;
 }
 
 int get_operator_type(char *buf) {
