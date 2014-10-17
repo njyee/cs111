@@ -363,6 +363,13 @@ struct command_node *combine_three_commands(struct command_node *first_command, 
     return new_command_node;
 }
 
+void
+print_error_message(int line_number, char *error_string) {
+    fprintf(stderr, "%d: Syntax: %s\n", line_number, error_string);
+    free(error_string);
+    exit(1);  //magic number
+}
+
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
@@ -381,12 +388,14 @@ make_command_stream (int (*get_next_byte) (void *),
     int is_special_word = 0;
     int last_byte = 0;
     int number_of_words = 0;  // index for appending word
+    int line_number_ref = 0;  // keep track of line number in case of error. 
     
     //char word[100];
     //char* words[100];
     char * word;
     char ** words;
     char * special_word;
+    char * error_description; // to pass description of error to printing function
     
     enum Elements follows = NEWLINE;
     
@@ -401,6 +410,9 @@ make_command_stream (int (*get_next_byte) (void *),
     
     struct operator_stack spec_op_stack;
     
+    // init error_description
+    error_description = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+    memset(error_description, 0, WORD_BUF_SIZE*sizeof(char)+1);
     
     // init comstream. Dynamically allocated because needs to be returned
     comstream = (struct command_stream*)malloc(sizeof(struct command_stream));
@@ -453,7 +465,9 @@ make_command_stream (int (*get_next_byte) (void *),
             if(strlen(word) == 0 && words[0] == NULL && follows == COMMAND)
             {
                 // error
-                exit(12);
+                //exit(12);
+                strcpy(error_description, "Word can't follow command if is first word");
+                print_error_message(line_number_ref, error_description);
             }
             // append (could have huge problems with segfault)
             i = strlen(word);
@@ -472,11 +486,17 @@ make_command_stream (int (*get_next_byte) (void *),
                     !strcmp(word, "do") || !strcmp(word, "done")))
                 {
                     is_special_word = 1;
-                    if (follows == COMMAND && (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until")))
-                        exit(234);
+                    if (follows == COMMAND && (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until"))) {
+                        //exit(234);
+                        strcpy(error_description, "first compound command keyword can't follow command");
+                        print_error_message(line_number_ref, error_description);
+                    }
                     if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) &&
-                        follows != COMMAND && follows != SEMICOLON && follows != NEWLINE)
-                        exit(89);
+                        follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
+                            // exit(89);
+                            strcpy(error_description, "dependent compound command keyword doesn't follow command, semicolon, or newline");
+                            print_error_message(line_number_ref, error_description);
+                        }
                     if ((!strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") || !strcmp(word, "do") || !strcmp(word, "done")) && follows == SEMICOLON)
                         operator_stack_pop(&opstack);
                     special_word = word;
@@ -524,6 +544,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 // }
                 do {
                     c = get_next_byte(get_next_byte_argument);
+                    line_number_ref++;
                 } while (c != '\n' && c != EOF);
             }
             if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
@@ -549,15 +570,20 @@ make_command_stream (int (*get_next_byte) (void *),
                 number_of_words = 0;
             }
             if (c == '(') {
-                if (follows == COMMAND)
-                    exit(234);
+                if (follows == COMMAND) {
+                    // exit(234);
+                    strcpy(error_description, "( can't directly follow command");
+                    print_error_message(line_number_ref, error_description);
+                }
                 //special_word = word;
                 follows = SPECIAL;
                 is_operator = 1;
             }
             else if (c == ')') {
                 if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
-                    exit(78);
+                    // exit(78);
+                    strcpy(error_description, ") must follow command, semicolon, or newline");
+                    print_error_message(line_number_ref, error_description);
                 }
                 // special_word = word;
                 is_operator = 1;
@@ -574,12 +600,15 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
                 else {
                     // error
-                    printf("operator %c does not follow command", c);
-                    exit(23);
+                    //printf("operator %c does not follow command", c);
+                    strcpy(error_description, "operator does not follow command");
+                    print_error_message(line_number_ref, error_description);
+                    //exit(23);
                 }
             }
             else if (c == '\n')
             {
+                line_number_ref++;
                 if (follows == COMMAND)
                 {
                     c = ';';
@@ -594,8 +623,11 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             else if (c == '<' || c == '>') {
                 r = c;
-                if (follows != COMMAND)
-                    exit(45); // error
+                if (follows != COMMAND) {
+                    //exit(45); // error
+                    strcpy(error_description, "redirect doesn't follow command");
+                    print_error_message(line_number_ref, error_description);
+                }
                 for (;;) {
                     c = get_next_byte(get_next_byte_argument);
                     
@@ -616,19 +648,26 @@ make_command_stream (int (*get_next_byte) (void *),
                             break;
                     }
                 }
-                // if more than one word or zero words
-                if (number_of_words != 1)
-                    exit(56);
+                // if more than one word  //or zero words?
+                if (number_of_words != 1) {
+                    //exit(56);
+                    strcpy(error_description, "more than one word follows redirect");
+                    print_error_message(line_number_ref, error_description);
+                }
                 node = command_stack_top(&comstack);
                 if (r == '<') {
-                    if (node->command->input)
-                        exit (67);
-                    else
+                    if (node->command->input) {
+                        //exit (67);
+                        strcpy(error_description, "command already contains an input");
+                        print_error_message(line_number_ref, error_description);
+                    } else
                         node->command->input = words[0];
                 } else {
-                    if (node->command->output)
-                        exit (78);
-                    else
+                    if (node->command->output) {
+                        strcpy(error_description, "command already contains an output");
+                        print_error_message(line_number_ref, error_description);
+                        //exit (78);
+                    } else
                         node->command->output = words[0];
                 }
                 node = (struct command_node *) malloc(sizeof(struct command_node));
@@ -641,10 +680,16 @@ make_command_stream (int (*get_next_byte) (void *),
                 is_operator = 1;
                 if (follows == SEMICOLON)
                     operator_stack_pop(&opstack); //pop the automatically added semicolon
-                else if (follows != COMMAND && follows != NEWLINE)
-                    exit(90);
-                if (operator_stack_size(&spec_op_stack))
-                    exit(91);
+                else if (follows != COMMAND && follows != NEWLINE) {
+                    //exit(90);
+                    strcpy(error_description, "EOF must follow either semicolon, command, or newline");
+                    print_error_message(line_number_ref, error_description);
+                } 
+                if (operator_stack_size(&spec_op_stack)) {
+                    //exit(91);
+                    strcpy(error_description, "compound command not properly closed");
+                    print_error_message(line_number_ref, error_description);
+                }
             }
             if (is_operator)
             {
@@ -689,10 +734,15 @@ make_command_stream (int (*get_next_byte) (void *),
                           (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
                           (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
                                 operator_stack_push(&spec_op_stack, op_node);
-                        } else 
-                                exit(312);
+                        } else {
+                                //exit(312);
+                            strcpy(error_description, "compound command key word order is incorrect");
+                            print_error_message(line_number_ref, error_description);
+                        }
                     } else {
-                        exit(313);
+                       // exit(313);
+                       strcpy(error_description, "compound command key word doesn't follow compound starter word");
+                       print_error_message(line_number_ref, error_description);
                     }
                 }
                 
@@ -775,8 +825,11 @@ make_command_stream (int (*get_next_byte) (void *),
                             combined_command = combine_two_commands(first_command, second_command, WHILE_OP);
                         else if(popped_operator->value == UNTIL_OP)
                             combined_command = combine_two_commands(first_command, second_command, UNTIL_OP);
-                        else
-                            exit(180);
+                        else {
+                            //exit(180);
+                            strcpy(error_description, "improper compound command keyword follows 'do' keyword");
+                            print_error_message(line_number_ref, error_description);
+                        }
                         command_stack_push(&comstack, *combined_command);
                     } else if(popped_operator->value == OPEN_PAREN_OP){ 
                         struct command_node* popped_command_node = command_stack_pop(&comstack);
@@ -793,8 +846,10 @@ make_command_stream (int (*get_next_byte) (void *),
                         command_stack_push(&comstack, *subshell_command_node);
                     } else {
                         // error
-                        printf("error with compound command");
-                        exit(34);
+                        //printf("error with compound command");
+                        //exit(34);
+                        strcpy(error_description, "compound command order inconsistency");
+                        print_error_message(line_number_ref, error_description);
                     }    
                 }
                 
