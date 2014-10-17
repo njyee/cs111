@@ -450,10 +450,10 @@ make_command_stream (int (*get_next_byte) (void *),
         // get next byte
         if (!is_special_word && !is_redirect) {
             c = get_next_byte(get_next_byte_argument);
-            if(!is_valid_character(c)){
-                strcpy(error_description, "invalid character");
-                print_error_message(line_number_ref, error_description);
-            }
+            // if(!is_valid_character(c)){
+            //     strcpy(error_description, "invalid character");
+            //     print_error_message(line_number_ref, error_description);
+            // }
         }
         // if(c == EOF)
         //     break;
