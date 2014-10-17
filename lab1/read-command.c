@@ -244,7 +244,8 @@ int is_special_token(char c){
 }
 
 int is_valid_character(char c) {
-    return isalnum(c) || isspace(c) || is_other_character(c) || is_special_token(c);
+    return isalnum(c) || isspace(c); ||  is_other_character(c) || is_special_token(c);
+    // return isalnum(c) || isspace(c) || strchr("")
 }
 
 int get_operator_type(char *buf) {
@@ -540,162 +541,164 @@ make_command_stream (int (*get_next_byte) (void *),
                 word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
                 memset(word, 0, WORD_BUF_SIZE*sizeof(char));
             }
-            if (c == '#')
-            {
-                // ignore remaining characters until reach newline
-                // for (;;) {
-                //     c = get_next_byte(get_next_byte_argument);
-                //     if (c == '\n' || c == EOF)
-                //         break;
-                // }
-                do {
-                    c = get_next_byte(get_next_byte_argument);
-                    line_number_ref++;
-                } while (c != '\n' && c != EOF);
-            }
-            if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
-            {
-                follows = COMMAND;
-                // push simple command
-                //node->command = (command_t)malloc(sizeof(struct command));
-                node->command->type = SIMPLE_COMMAND;
-                node->command->status = EXECUTION_STATUS;
-                node->command->input = NULL;
-                node->command->output = NULL;
-                node->command->u.word = words;
-                // node->command->u.command[0] = NULL;
-                command_stack_push(&comstack, *node);
-                
-                // reset
-                // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
-                // my_command = (command_t)malloc(sizeof(struct command));
-                // node->command = my_command;
-                init_node(node);
-                words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
-                words[0] = NULL;  //used to check if words is empty in future if statements
-                number_of_words = 0;
-            }
-            if (c == '(') {
-                if (follows == COMMAND) {
-                    // exit(234);
-                    strcpy(error_description, "( can't directly follow command");
-                    print_error_message(line_number_ref, error_description);
-                }
-                //special_word = word;
-                follows = SPECIAL;
-                is_operator = 1;
-            }
-            else if (c == ')') {
-                if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
-                    // exit(78);
-                    strcpy(error_description, ") must follow command, semicolon, or newline");
-                    print_error_message(line_number_ref, error_description);
-                }
-                // special_word = word;
-                is_operator = 1;
-            }
-            else if (c == ';' || c == '|')
-            {
-                if (follows == COMMAND)
+            if (!is_special_word) {
+                if (c == '#')
                 {
-                    is_operator = 1;
-                    if (c == ';')
-                        follows = SEMICOLON;
-                    else
-                        follows = PIPE;
+                    // ignore remaining characters until reach newline
+                    // for (;;) {
+                    //     c = get_next_byte(get_next_byte_argument);
+                    //     if (c == '\n' || c == EOF)
+                    //         break;
+                    // }
+                    do {
+                        c = get_next_byte(get_next_byte_argument);
+                        line_number_ref++;
+                    } while (c != '\n' && c != EOF);
                 }
-                else {
-                    // error
-                    //printf("operator %c does not follow command", c);
-                    strcpy(error_description, "operator does not follow command");
-                    print_error_message(line_number_ref, error_description);
-                    //exit(23);
-                }
-            }
-            else if (c == '\n')
-            {
-                line_number_ref++;
-                if (follows == COMMAND)
+                if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
                 {
-                    c = ';';
-                    is_operator = 1;
-                    follows = SEMICOLON;
-                }
-                else if (last_byte == ';')
-                {
-                    operator_stack_pop(&opstack);
-                    follows = NEWLINE;
-                }
-            }
-            else if (c == '<' || c == '>') {
-                is_redirect = 1;
-                r = c;
-                if (follows != COMMAND) {
-                    //exit(45); // error
-                    strcpy(error_description, "redirect doesn't follow command");
-                    print_error_message(line_number_ref, error_description);
-                }
-                for (;;) {
-                    c = get_next_byte(get_next_byte_argument);
+                    follows = COMMAND;
+                    // push simple command
+                    //node->command = (command_t)malloc(sizeof(struct command));
+                    node->command->type = SIMPLE_COMMAND;
+                    node->command->status = EXECUTION_STATUS;
+                    node->command->input = NULL;
+                    node->command->output = NULL;
+                    node->command->u.word = words;
+                    // node->command->u.command[0] = NULL;
+                    command_stack_push(&comstack, *node);
                     
-                    if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
-                          c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
-                        // append to word
-                        i = strlen(word);
-                        word[i] = c;
-                        word[++i] = '\0';
-                    } else {
-                        if (strlen(word) > 0) {
-                            // end word
-                            words[number_of_words++] = word;
-                            word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
-                            memset(word, 0, WORD_BUF_SIZE*sizeof(word));    
-                        }
-                        if (c != ' ' && c != '\t')
-                            break;
+                    // reset
+                    // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
+                    // my_command = (command_t)malloc(sizeof(struct command));
+                    // node->command = my_command;
+                    init_node(node);
+                    words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                    words[0] = NULL;  //used to check if words is empty in future if statements
+                    number_of_words = 0;
+                }
+                if (c == '(') {
+                    if (follows == COMMAND) {
+                        // exit(234);
+                        strcpy(error_description, "( can't directly follow command");
+                        print_error_message(line_number_ref, error_description);
+                    }
+                    //special_word = word;
+                    follows = SPECIAL;
+                    is_operator = 1;
+                }
+                else if (c == ')') {
+                    if (follows != COMMAND && follows != SEMICOLON && follows != NEWLINE) {
+                        // exit(78);
+                        strcpy(error_description, ") must follow command, semicolon, or newline");
+                        print_error_message(line_number_ref, error_description);
+                    }
+                    // special_word = word;
+                    is_operator = 1;
+                }
+                else if (c == ';' || c == '|')
+                {
+                    if (follows == COMMAND)
+                    {
+                        is_operator = 1;
+                        if (c == ';')
+                            follows = SEMICOLON;
+                        else
+                            follows = PIPE;
+                    }
+                    else {
+                        // error
+                        //printf("operator %c does not follow command", c);
+                        strcpy(error_description, "operator does not follow command");
+                        print_error_message(line_number_ref, error_description);
+                        //exit(23);
                     }
                 }
-                // if more than one word  //or zero words?
-                if (number_of_words != 1) {
-                    //exit(56);
-                    strcpy(error_description, "more than one word follows redirect");
-                    print_error_message(line_number_ref, error_description);
+                else if (c == '\n')
+                {
+                    line_number_ref++;
+                    if (follows == COMMAND)
+                    {
+                        c = ';';
+                        is_operator = 1;
+                        follows = SEMICOLON;
+                    }
+                    else if (last_byte == ';')
+                    {
+                        operator_stack_pop(&opstack);
+                        follows = NEWLINE;
+                    }
                 }
-                node = command_stack_top(&comstack);
-                if (r == '<') {
-                    if (node->command->input) {
-                        //exit (67);
-                        strcpy(error_description, "command already contains an input");
+                else if (c == '<' || c == '>') {
+                    is_redirect = 1;
+                    r = c;
+                    if (follows != COMMAND) {
+                        //exit(45); // error
+                        strcpy(error_description, "redirect doesn't follow command");
                         print_error_message(line_number_ref, error_description);
-                    } else
-                        node->command->input = words[0];
-                } else {
-                    if (node->command->output) {
-                        strcpy(error_description, "command already contains an output");
+                    }
+                    for (;;) {
+                        c = get_next_byte(get_next_byte_argument);
+                        
+                        if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                              c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
+                            // append to word
+                            i = strlen(word);
+                            word[i] = c;
+                            word[++i] = '\0';
+                        } else {
+                            if (strlen(word) > 0) {
+                                // end word
+                                words[number_of_words++] = word;
+                                word = (char*)malloc(WORD_BUF_SIZE*sizeof(char)+1);
+                                memset(word, 0, WORD_BUF_SIZE*sizeof(word));    
+                            }
+                            if (c != ' ' && c != '\t')
+                                break;
+                        }
+                    }
+                    // if more than one word  //or zero words?
+                    if (number_of_words != 1) {
+                        //exit(56);
+                        strcpy(error_description, "more than one word follows redirect");
                         print_error_message(line_number_ref, error_description);
-                        //exit (78);
-                    } else
-                        node->command->output = words[0];
+                    }
+                    node = command_stack_top(&comstack);
+                    if (r == '<') {
+                        if (node->command->input || node->command->output) {
+                            //exit (67);
+                            strcpy(error_description, "command already contains an input");
+                            print_error_message(line_number_ref, error_description);
+                        } else
+                            node->command->input = words[0];
+                    } else {
+                        if (node->command->output) {
+                            strcpy(error_description, "command already contains an output");
+                            print_error_message(line_number_ref, error_description);
+                            //exit (78);
+                        } else
+                            node->command->output = words[0];
+                    }
+                    node = (struct command_node *) malloc(sizeof(struct command_node));
+                    init_node(node);
+                    // words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
+                    words[0] = NULL;
+                    number_of_words = 0;
                 }
-                node = (struct command_node *) malloc(sizeof(struct command_node));
-                init_node(node);
-                // words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
-                words[0] = NULL;
-                number_of_words = 0;
-            }
-            else if (c == EOF) {
-                is_operator = 1;
-                if (follows == SEMICOLON)
-                    operator_stack_pop(&opstack); //pop the automatically added semicolon
-                else if (follows != COMMAND && follows != NEWLINE) {
-                    //exit(90);
-                    strcpy(error_description, "EOF must follow either semicolon, command, or newline");
-                    print_error_message(line_number_ref, error_description);
-                } 
-                if (operator_stack_size(&spec_op_stack)) {
-                    //exit(91);
-                    strcpy(error_description, "compound command not properly closed");
-                    print_error_message(line_number_ref, error_description);
+                else if (c == EOF) {
+                    is_operator = 1;
+                    if (follows == SEMICOLON)
+                        operator_stack_pop(&opstack); //pop the automatically added semicolon
+                    else if (follows != COMMAND && follows != NEWLINE) {
+                        //exit(90);
+                        strcpy(error_description, "EOF must follow either semicolon, command, or newline");
+                        print_error_message(line_number_ref, error_description);
+                    } 
+                    if (operator_stack_size(&spec_op_stack)) {
+                        //exit(91);
+                        strcpy(error_description, "compound command not properly closed");
+                        print_error_message(line_number_ref, error_description);
+                    }
                 }
             }
             if (is_operator)
