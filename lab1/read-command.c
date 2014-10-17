@@ -244,8 +244,8 @@ int is_special_token(char c){
 }
 
 int is_valid_character(char c) {
-    return isalnum(c) || isspace(c); ||  is_other_character(c) || is_special_token(c);
-    // return isalnum(c) || isspace(c) || strchr("")
+    return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
+    // return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>",c) != NULL)
 }
 
 int get_operator_type(char *buf) {
