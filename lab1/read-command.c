@@ -386,6 +386,7 @@ make_command_stream (int (*get_next_byte) (void *),
     char r = '\0';  // redirect type
     int is_operator = 0;  // if set to true, run algorithm from class
     int is_special_word = 0;
+    int is_redirect = 0;
     int last_byte = 0;
     int number_of_words = 0;  // index for appending word
     int line_number_ref = 0;  // keep track of line number in case of error. 
@@ -447,14 +448,19 @@ make_command_stream (int (*get_next_byte) (void *),
         memset(special_word, 0, WORD_BUF_SIZE*sizeof(char));
         
         // get next byte
-        if (!is_special_word) {
+        if (!is_special_word && !is_redirect) {
             c = get_next_byte(get_next_byte_argument);
+            if(!is_valid_character(c)){
+                strcpy(error_description, "invalid character");
+                print_error_message(line_number_ref, error_description);
+            }
         }
         // if(c == EOF)
         //     break;
         
         // reset is_special_word
         is_special_word = 0;
+        is_redirect = 0;
         
         // if word char
         if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
@@ -622,6 +628,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 }
             }
             else if (c == '<' || c == '>') {
+                is_redirect = 1;
                 r = c;
                 if (follows != COMMAND) {
                     //exit(45); // error
@@ -887,7 +894,7 @@ make_command_stream (int (*get_next_byte) (void *),
         if(c == EOF)
             break;
             
-        if (!is_special_word) {
+        if (!is_special_word && !is_redirect) {
             last_byte = c;
         }
     }

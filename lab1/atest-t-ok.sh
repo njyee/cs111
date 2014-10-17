@@ -131,8 +131,7 @@ cat >test.exp <<'EOF'
         until
           :
         do
-          echo yoo hoo!
-        done \
+          echo yoo
       ;
         false
     do
