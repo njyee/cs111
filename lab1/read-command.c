@@ -199,50 +199,6 @@ int operator_stack_size(struct operator_stack * stack) {
     return stack->size;
 }
 
-// // checks if c is an 'other' token as specified in spec
-// int is_other_character(char c) {
-//     if(c == '!')
-//         return 1;
-//     else if(c == '+')
-//         return 1;
-//     else if(c == ',')
-//         return 1;
-//     else if(c == '-')
-//         return 1;
-//     else if(c == '.')
-//         return 1;
-//     else if(c == '/')
-//         return 1;
-//     else if(c == ':')
-//         return 1;
-//     else if(c == '@')
-//         return 1;
-//     else if(c == '^')
-//         return 1;
-//     else if(c == '_')
-//         return 1;
-//     else 
-//         return 0;
-// }
-
-// // checks if c is a 'special' token
-// int is_special_token(char c){
-//     if(c == ';')
-//         return 1;
-//     else if(c == '|')
-//         return 1;
-//     else if(c == '(')
-//         return 1;
-//     else if(c == ')')
-//         return 1;
-//     else if(c == '<')
-//         return 1;
-//     else if(c == '>')
-//         return 1;
-//     else
-//         return 0;
-// }
-
 int is_valid_character(char c) {
     //return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
     return isalnum(c) || isspace(c) || (strchr("!+,-./:@^_;|()<>#" , c) != NULL) || c == EOF;
@@ -644,8 +600,9 @@ make_command_stream (int (*get_next_byte) (void *),
                     for (;;) {
                         c = get_next_byte(get_next_byte_argument);
                         
-                        if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
-                              c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
+                        //if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
+                        //      c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
+                        if(isalnum(c) || strchr("!%+,-./:@^_", c) != NULL) {
                             // append to word
                             i = strlen(word);
                             word[i] = c;
@@ -933,6 +890,8 @@ read_command_stream (command_stream_t s)
         c = s->head->command;
         s->head = s->head->next;
     }
+    
+    // need to handle memory deallocation
     
     return c;
 }
