@@ -442,7 +442,6 @@ make_command_stream (int (*get_next_byte) (void *),
             if (strlen(word) > 0)
             {
                 // if first word
-                //if (sizeof(words) == 0)
                 if(words[0] == NULL &&
                    (!strcmp(word, "if") || !strcmp(word, "while") || !strcmp(word, "until") ||
                     !strcmp(word, "then") || !strcmp(word, "else") || !strcmp(word, "fi") ||
@@ -600,8 +599,6 @@ make_command_stream (int (*get_next_byte) (void *),
                     for (;;) {
                         c = get_next_byte(get_next_byte_argument);
                         
-                        //if (isalnum(c) || c == '!' || c == '%' || c == '+' || c == ',' || c == '-' ||
-                        //      c == '.' || c == '/' || c == ':' || c == '@' || c == '^' || c == '_' ) {
                         if(isalnum(c) || strchr("!%+,-./:@^_", c) != NULL) {
                             // append to word
                             i = strlen(word);
@@ -862,14 +859,6 @@ make_command_stream (int (*get_next_byte) (void *),
             last_byte = c;
         }
     }
-    
-    
-    
-    // commented out to not create infinite loop
-    // while(!operator_stack_empty(&opstack))
-    // {
-    //     // Do some processing if necessary. 
-    // }
 
     while (!command_stack_empty(&comstack)) {
         node = command_stack_pop(&comstack);
