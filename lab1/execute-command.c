@@ -20,13 +20,91 @@
 
 #include <error.h>
 #include <stdlib.h>
+#include <string.h>   // for strcmp
+#include <unistd.h>
+#include <sys/wait.h> // I think for WEXITSTATUS macro
+#include <fcntl.h>
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
    
-   void execute_switch(command_t c); // function prototype
+void execute_switch(command_t c); // function prototype
    
 /* Each command type gets its own "execute_...._command" function */
+
+/* Execute a simple command */
+
+/*
+    pid_t p = fork()
+    if(p < 0) 
+        error
+    else if(p == 0) //child
+        if c->input != NULL
+            open c->input and get file descriptor, readonly
+            use dup2 to assign in_fd and close unused input end
+        if c->output != NULL
+            open c->output and get file descriptor, writeonly+append
+            use dup2 to assign out_fd and close unused output end
+        // execute
+        if !strcmp(word[0], "exec")
+            execvp(word[1], word+1)
+        else
+            execvp(word[0], word)
+            error //exec never returns
+                
+    else // parent
+        waitpid(p, &exit_status, 0)
+        c->status = WEXITSTATUS(exit_status)
+
+*/
+
+void
+execute_simple_command(command_t c) {
+    pid_t p = fork();
+    int exit_status;
+    int infile_desc;
+    int outfile_desc;
+    
+    if(p < 0)
+        error(1, errno, "fork failed");
+    else if(p == 0) { 
+        if(c->input != NULL) {
+            infile_desc = open(c->input, O_RDONLY);
+            dup2(infile_desc, 0); 
+        }
+        if(c->output != NULL) {
+            outfile_desc = open(c->output, O_WRONLY | O_APPEND);
+            dup2(outfile_desc, 1);
+        }
+        
+        if(!strcmp(c->u.word[0], "exec"))
+            execvp(c->u.word[1], c->u.word+1);
+        else
+            execvp(c->u.word[0], c->u.word);
+        
+        error(1, errno, "execvp should never return");
+    }
+    else {
+        waitpid(p, &exit_status, 0);
+        c->status = WEXITSTATUS(exit_status);
+    }
+}
+
+/* Execute an IF command */
+
+// fork on c->u.command[0]
+//      if(c->u.command[0]->exit_status == 0) //success
+//          execute the 'then' command
+//          c->exit_status gets exit status of 'then' command
+//      else //first command failed
+//          if there exists an 'else' command
+//              execute the 'else' command
+//              c->exit_status gets exit status of 'else' command
+
+void
+execute_if_command(command_t c) {
+    
+}
 
 /* Execute a pipe command */
 void
@@ -71,6 +149,40 @@ execute_pipe_command(command_t c) {
             c->status = WEXITSTATUS(estatus);
         }
     }
+}
+
+/* Execute a sequence command */
+
+// execute left process
+// if exit_status of left == 0
+//      execute the right. (should result in a call back to this function if > 2 commands in sequence)
+
+void
+execute_sequence_command(command_t c) {
+    
+}
+
+/* Execute a subshell command.
+   For our purposes, executing a subshell command is essentially
+   executing a simple command but independent from other processes */
+  
+void
+execute_subshell_command(command_t c) {
+    
+}
+
+/* Execute an until command */
+
+void
+execute_until_command(command_t c) {
+    
+}
+
+/* Execute a while command */
+
+void
+execute_while_command(command_t c) {
+    
 }
    
 
