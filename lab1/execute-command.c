@@ -256,5 +256,8 @@ void
 execute_command (command_t c, int profiling)
 {
   /* FIXME: Replace this with your implementation, like 'prepare_profiling'.  */
-  error (1, 0, "command execution not yet implemented");
+  
+  execute_switch(c);
+  
+  //error (1, 0, "command execution not yet implemented");
 }
