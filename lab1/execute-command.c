@@ -38,7 +38,9 @@ void set_io(command_t c) {
         dup2(infile_desc, 0);
     }
     if(c->output != NULL) {
-        outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
+        //outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
+        //outfile_desc = open(c->output, O_WRONLY | O_CREAT, 0644);
+        outfile_desc = open(c->output, O_WRONLY | O_CREAT);
         dup2(outfile_desc, 1);
     }
 }
@@ -329,7 +331,17 @@ execute_until_command(command_t c) {
 
 void
 execute_while_command(command_t c) {
+    pid_t p;
+    int exit_status;
     
+    p = fork();
+    if(p < 0)
+        error(1, errno, "fork failed");
+    else if(p == 0) {
+        
+    } else {
+        
+    }
 }
    
 
