@@ -38,7 +38,7 @@ void set_io(command_t c) {
         dup2(infile_desc, 0);
     }
     if(c->output != NULL) {
-        outfile_desc = open(c->output, O_WRONLY | O_APPEND);
+        outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
         dup2(outfile_desc, 1);
     }
 }
@@ -88,7 +88,7 @@ execute_simple_command(command_t c) {
         //     dup2(infile_desc, 0); 
         // }
         // if(c->output != NULL) {
-        //     outfile_desc = open(c->output, O_WRONLY | O_APPEND);
+        //     outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
         //     dup2(outfile_desc, 1);
         // }
         set_io(c);
