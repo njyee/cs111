@@ -18,6 +18,7 @@
 #include "command.h"
 #include "command-internals.h"
 
+#include <errno.h>
 #include <error.h>
 #include <stdlib.h>
 #include <string.h>   // for strcmp
@@ -27,6 +28,20 @@
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
+
+void set_io(command_t c) {
+    int infile_desc;
+    int outfile_desc;
+
+    if(c->input != NULL) {
+        infile_desc = open(c->input, O_RDONLY);
+        dup2(infile_desc, 0);
+    }
+    if(c->output != NULL) {
+        outfile_desc = open(c->output, O_WRONLY | O_APPEND);
+        dup2(outfile_desc, 1);
+    }
+}
    
 void execute_switch(command_t c); // function prototype
    
@@ -62,20 +77,21 @@ void
 execute_simple_command(command_t c) {
     pid_t p = fork();
     int exit_status;
-    int infile_desc;
-    int outfile_desc;
+    // int infile_desc;
+    // int outfile_desc;
     
     if(p < 0)
         error(1, errno, "fork failed");
     else if(p == 0) { 
-        if(c->input != NULL) {
-            infile_desc = open(c->input, O_RDONLY);
-            dup2(infile_desc, 0); 
-        }
-        if(c->output != NULL) {
-            outfile_desc = open(c->output, O_WRONLY | O_APPEND);
-            dup2(outfile_desc, 1);
-        }
+        // if(c->input != NULL) {
+        //     infile_desc = open(c->input, O_RDONLY);
+        //     dup2(infile_desc, 0); 
+        // }
+        // if(c->output != NULL) {
+        //     outfile_desc = open(c->output, O_WRONLY | O_APPEND);
+        //     dup2(outfile_desc, 1);
+        // }
+        set_io(c);
         
         if(!strcmp(c->u.word[0], "exec"))
             execvp(c->u.word[1], c->u.word+1);
