@@ -233,22 +233,22 @@ execute_switch(command_t c) {
             execute_simple_command(c);
             break;
         case IF_COMMAND:
-            // execute_if_command(c);
+            execute_if_command(c);
             break;
         case PIPE_COMMAND:
             execute_pipe_command(c);
             break;
         case SEQUENCE_COMMAND:
-            // execute_sequence_command(c);
+            execute_sequence_command(c);
             break;
         case SUBSHELL_COMMAND:
-            // execute_subshell_command(c);
+            execute_subshell_command(c);
             break;
         case UNTIL_COMMAND:
-            // execute_until_command(c);
+            execute_until_command(c);
             break;
         case WHILE_COMMAND:
-            // execute_while_command(c);
+            execute_while_command(c);
             break;
         default:
             error(1, errno, "invalid command type passed to execute_switch");
