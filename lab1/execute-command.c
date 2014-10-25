@@ -126,11 +126,11 @@ execute_if_command(command_t c) {
     int i = 0;
     
     if(c->input != NULL)
-        while(c->u.command[i] != NULL)
+        while(i < 3 && c->u.command[i] != NULL)
             c->u.command[i++]->input = c->input;
     i = 0;
     if(c->output != NULL)
-        while(c->u.command[i] != NULL)
+        while(i < 3 && c->u.command[i] != NULL)
             c->u.command[i++]->output = c->output;
     
     p = fork();
