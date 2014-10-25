@@ -123,6 +123,15 @@ void
 execute_if_command(command_t c) {
     pid_t p;
     int exit_status;
+    int i = 0;
+    
+    if(c->input != NULL)
+        while(c->u.command[i] != NULL)
+            c->u.command[i++]->input = c->input;
+    i = 0;
+    if(c->output != NULL)
+        while(c->u.command[i] != NULL)
+            c->u.command[i++]->output = c->output;
     
     p = fork();
     if(p < 0)
@@ -264,6 +273,8 @@ execute_pipe_command(command_t c) {
         
         if(c.u->command[0] == 0)
             // Execute the right
+    else // parent
+    
     
 */
 

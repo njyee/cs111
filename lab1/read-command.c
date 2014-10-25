@@ -54,7 +54,16 @@ struct command_node
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
     node->next = NULL;
+    init_command(node->command);
     //node->next = (command_node_t) malloc(sizeof(struct command_node));
+}
+
+void init_command(command_node_t command) {
+    command->status = -1;
+    command->input = NULL;
+    command->output = NULL;
+    // memset(command->u.command, 0, 3*sizeof(command_t);
+    memset(&command->u, 0, 3*sizeof(command->u);
 }
 
 struct command_stream
@@ -270,7 +279,8 @@ int get_command_type(int op) {
 // used to combine 2 command nodes into a single command node
 struct command_node *combine_two_commands(struct command_node *first_command, struct command_node *second_command, int op) {
     // declarations
-    struct command_node *new_command_node; 
+    struct command_node *new_command_node;
+    init_node(new_command_node);
     int command_type;
 
     // get command type from the operator type
@@ -297,6 +307,7 @@ struct command_node *combine_two_commands(struct command_node *first_command, st
 struct command_node *combine_three_commands(struct command_node *first_command, struct command_node *second_command, struct command_node *third_command, int op) {
     // declarations
     struct command_node *new_command_node; 
+    init_node(new_command_node);
     int command_type;
     
     // get command type from the operator type
