@@ -283,7 +283,6 @@ int get_command_type(int op) {
 struct command_node *combine_two_commands(struct command_node *first_command, struct command_node *second_command, int op) {
     // declarations
     struct command_node *new_command_node;
-    init_node(new_command_node);
     int command_type;
 
     // get command type from the operator type
@@ -301,6 +300,7 @@ struct command_node *combine_two_commands(struct command_node *first_command, st
     // place objects in u.command
     new_command_node->command->u.command[0] = first_command->command;
     new_command_node->command->u.command[1] = second_command->command;
+    new_command_node->command->u.command[2] = NULL;
     
     return new_command_node;
 }
@@ -310,7 +310,6 @@ struct command_node *combine_two_commands(struct command_node *first_command, st
 struct command_node *combine_three_commands(struct command_node *first_command, struct command_node *second_command, struct command_node *third_command, int op) {
     // declarations
     struct command_node *new_command_node; 
-    init_node(new_command_node);
     int command_type;
     
     // get command type from the operator type
