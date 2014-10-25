@@ -56,7 +56,10 @@ void init_command(command_t command) {
     command->input = NULL;
     command->output = NULL;
     // memset(command->u.command, 0, 3*sizeof(command_t));
-    memset(&command->u, 0, 3*sizeof(command->u));
+    // memset(&command->u, 0, 3*sizeof(command->u));
+    command->u.command[0] = NULL;
+    command->u.command[1] = NULL;
+    command->u.command[2] = NULL;
 }
 
 void init_node(struct command_node * node) {
