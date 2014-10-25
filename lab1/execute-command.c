@@ -146,7 +146,9 @@ execute_pipe_command(command_t c) {
         _exit(c->u.command[1]->status);
     } else { // pid > 0, so parent
         second_pid = fork();
-        if(second_pid < 0) {
+        if(second_pid < 0)
+            error(1, errno, "fork failed");
+        else if(second_pid == 0) {
             close(buffer[0]); // close unused read end
             if(dup2(buffer[1], 1) < 0) {
                 error(1, errno, "dup2 failed");
@@ -163,6 +165,7 @@ execute_pipe_command(command_t c) {
         } else {
             waitpid(second_pid, &exit_status, 0);
             c->status = WEXITSTATUS(exit_status);
+            //close(buffer[1]);  // close write end
         }
     }
 }
