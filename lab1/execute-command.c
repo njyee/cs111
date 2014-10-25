@@ -352,7 +352,39 @@ execute_subshell_command(command_t c) {
 
 void
 execute_until_command(command_t c) {
+    pid_t p;
+    int exit_status = -1;
     
+    while (1) {
+        p = fork();
+        if(p < 0)
+            error(1, errno, "fork failed");
+        else if(p == 0) {
+            execute_switch(c->u.command[0]);
+            _exit(c->u.command[0]->status);
+        } else {
+            waitpid(p, &exit_status, 0);
+            if(exit_status != 0) {
+                p = fork();
+                if(p < 0)
+                    error(1, errno, "fork failed");
+                else if(p == 0) {
+                    execute_switch(c->u.command[1]);
+                    _exit(c->u.command[1]->status);
+                } else {
+                    waitpid(p, &exit_status, 0);
+                    if (exit_status != 0) {
+                        c->status = WEXITSTATUS(exit_status);
+                        break;
+                    }
+                }
+            }
+            else {
+                c->status = WEXITSTATUS(0);
+                break;
+            }
+        }
+    }
 }
 
 /* Execute a while command */
