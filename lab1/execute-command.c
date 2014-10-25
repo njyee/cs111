@@ -184,7 +184,28 @@ execute_sequence_command(command_t c) {
   
 void
 execute_subshell_command(command_t c) {
+    pid_t p;
+    int exit_status;
     
+    p = fork();
+    if (p<0)
+        error(1, errno, "first fork failed");
+    else if(p == 0)
+    {
+        p = fork();
+        if(p < 0)
+            error(1, errno, "second fork failed");
+        else if(p == 0) { 
+            set_io(c);
+            execute_switch(c->u.command[0]);
+        } else {
+            waitpid(p, &exit_status, 0);
+            c->status = WEXITSTATUS(exit_status);
+        }
+    } else {
+        waitpid(p, &exit_status, 0);
+        c->status = WEXITSTATUS(exit_status);
+    }
 }
 
 /* Execute an until command */
