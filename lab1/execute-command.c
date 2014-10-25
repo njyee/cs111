@@ -109,7 +109,7 @@ execute_simple_command(command_t c) {
 /* Execute an IF command */
 
 // fork on c->u.command[0]
-//      if(c->u.command[0]->exit_status == 0) //success
+//      if(c->u.command[0]->status == 0) //success
 //          execute the 'then' command
 //          c->exit_status gets exit status of 'then' command
 //      else //first command failed
@@ -117,19 +117,48 @@ execute_simple_command(command_t c) {
 //              execute the 'else' command
 //              c->exit_status gets exit status of 'else' command
 
+// if a; then b; fi > file
+
 void
 execute_if_command(command_t c) {
+    pid_t p;
+    int exit_status;
     
+    p = fork();
+    if(p < 0)
+        error(1, errno, "fork failed");
+    else if(p == 0) { // child
+        execute_switch(c->u.command[0]);
+        _exit(c->u.command[0]->status);
+    } else { // parent
+        waitpid(p, &exit_status, 0);
+        p = fork();
+        if(p < 0)
+            error(1, errno, "fork failed");
+        else if(p == 0) {
+            if(exit_status == 0) { // success
+                execute_switch(c->u.command[1]);
+                _exit(c->u.command[1]->status);
+            } else if(c->u.command[2] != NULL) {
+                execute_switch(c->u.command[2]);
+                _exit(c->u.command[2]->status);
+            }
+        } else {
+            waitpid(p, &exit_status, 0);
+            c->status = WEXITSTATUS(exit_status);
+        }
+    }
 }
 
 /* Execute a pipe command */
 void
 execute_pipe_command(command_t c) {
-    pid_t returned_pid;
+    // pid_t returned_pid;
     pid_t first_pid;
     pid_t second_pid;
     int buffer[2];
-    int exit_status;
+    int exit_status_1;
+    int exit_status_2;
     
     if(pipe(buffer) < 0 ) {
         error(1, errno, "pipe creation failed");
@@ -165,11 +194,11 @@ execute_pipe_command(command_t c) {
         // c->status = WEXITSTATUS(exit_status);
     }
     
-    waitpid(first_pid, &exit_status, 0);
+    waitpid(first_pid, &exit_status_1, 0);
     close(buffer[1]); // done writing to pipe
-    waitpid(second_pid, &exit_status, 0);
+    waitpid(second_pid, &exit_status_2, 0);
     close(buffer[0]);
-    c->status = WEXITSTATUS(exit_status);
+    c->status = WEXITSTATUS(exit_status_2);
     
     
     // if(pipe(buffer) < 0 ) {
@@ -213,9 +242,30 @@ execute_pipe_command(command_t c) {
 
 /* Execute a sequence command */
 
-// execute left process
-// if exit_status of left == 0
-//      execute the right. (should result in a call back to this function if > 2 commands in sequence)
+/*
+    execute left process
+    if exit_status of left == 0 && there is "right" command
+        execute the right
+        
+
+    Overall exit status of each sequence command is the status of the right.
+        unless the left fails. 
+*/
+
+/*
+    pid_t pid;
+    int exit_status;
+    
+    pid = fork();
+    if(pid < 0)
+        error
+    else if(pid == 0) // child
+        // Execute the left
+        
+        if(c.u->command[0] == 0)
+            // Execute the right
+    
+*/
 
 void
 execute_sequence_command(command_t c) {
