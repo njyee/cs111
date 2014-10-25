@@ -287,7 +287,7 @@ execute_sequence_command(command_t c) {
     int exit_status;
     
     left_pid = fork();
-    if(pid < 0) {
+    if(left_pid < 0) {
         error(1, errno, "fork failed");
     } else if(left_pid == 0) {
         execute_switch(c->u.command[0]);
@@ -377,7 +377,7 @@ execute_while_command(command_t c) {
                     error(1, errno, "fork failed");
                 else if(p == 0) {
                     execute_switch(c->u.command[1]);
-                    _exit(c->u.command[1]->status)
+                    _exit(c->u.command[1]->status);
                 } else {
                     waitpid(p, &exit_status, 0);
                     if (exit_status != 0) {
