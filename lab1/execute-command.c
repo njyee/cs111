@@ -134,40 +134,81 @@ execute_pipe_command(command_t c) {
     if(pipe(buffer) < 0 ) {
         error(1, errno, "pipe creation failed");
     }
-    first_pid = fork();
+    first_pid = fork(); // left side
     if(first_pid < 0) {
-        error(1, errno, "fork failed, pid < 0");
-    } else if(first_pid == 0) { //child
-        close(buffer[1]); // close unused write end
+        error(1, errno, "fork failed for first_pid");
+    } else if(first_pid == 0) {
+        close(buffer[0]); // close unused read end
+        if(dup2(buffer[1], 1) < 0) {
+            error(1, errno, "dup2 failed for first_pid");
+        }
+        execute_switch(c->u.command[0]);
+        _exit(c->u.command[0]->status);
+    } else { //parent
+        // waitpid(first_pid, &exit_status, 0);
+        // close(buffer[1]); // done writing to pipe
+    }
+
+    second_pid = fork();
+    if(second_pid < 0) {
+        error(1, errno, "fork failed for second_pid");
+    } else if(second_pid == 0) {
+        close(buffer[1]); //close unused write end
         if(dup2(buffer[0], 0) < 0) {
-            error(1, errno, "dup2 failed");
-        } 
+            error(1, errno, "dup2 failed for second_pid");
+        }
         execute_switch(c->u.command[1]);
         _exit(c->u.command[1]->status);
-    } else { // pid > 0, so parent
-        second_pid = fork();
-        if(second_pid < 0)
-            error(1, errno, "fork failed");
-        else if(second_pid == 0) {
-            close(buffer[0]); // close unused read end
-            if(dup2(buffer[1], 1) < 0) {
-                error(1, errno, "dup2 failed");
-            }
-            execute_switch(c->u.command[0]);
-            _exit(c->u.command[0]->status);
-        } else { // parent needs overall exit status for pipe command
-             returned_pid = waitpid(-1, &exit_status, 0); //-1 means waiting for any process to exit
-        }
-        // set overall pipe exit status
-        if(second_pid == returned_pid) {
-            waitpid(first_pid, &exit_status, 0);
-            c->status = WEXITSTATUS(exit_status);
-        } else {
-            waitpid(second_pid, &exit_status, 0);
-            c->status = WEXITSTATUS(exit_status);
-            //close(buffer[1]);  // close write end
-        }
+    } else {
+        // waitpid(second_pid, &exit_status, 0);
+        // close(buffer[0]);
+        // c->status = WEXITSTATUS(exit_status);
     }
+    
+    waitpid(first_pid, &exit_status, 0);
+    close(buffer[1]); // done writing to pipe
+    waitpid(second_pid, &exit_status, 0);
+    close(buffer[0]);
+    c->status = WEXITSTATUS(exit_status);
+    
+    
+    // if(pipe(buffer) < 0 ) {
+    //     error(1, errno, "pipe creation failed");
+    // }
+    // first_pid = fork();
+    // if(first_pid < 0) {
+    //     error(1, errno, "fork failed, pid < 0");
+    // } else if(first_pid == 0) { //child
+    //     close(buffer[1]); // close unused write end
+    //     if(dup2(buffer[0], 0) < 0) {
+    //         error(1, errno, "dup2 failed");
+    //     } 
+    //     execute_switch(c->u.command[1]);
+    //     _exit(c->u.command[1]->status);
+    // } else { // pid > 0, so parent
+    //     second_pid = fork();
+    //     if(second_pid < 0)
+    //         error(1, errno, "fork failed");
+    //     else if(second_pid == 0) {
+    //         close(buffer[0]); // close unused read end
+    //         if(dup2(buffer[1], 1) < 0) {
+    //             error(1, errno, "dup2 failed");
+    //         }
+    //         execute_switch(c->u.command[0]);
+    //         _exit(c->u.command[0]->status);
+    //     } else { // parent needs overall exit status for pipe command
+    //          returned_pid = waitpid(-1, &exit_status, 0); //-1 means waiting for any process to exit
+    //     }
+    //     // set overall pipe exit status
+    //     if(second_pid == returned_pid) {
+    //         waitpid(first_pid, &exit_status, 0);
+    //         c->status = WEXITSTATUS(exit_status);
+    //     } else {
+    //         waitpid(second_pid, &exit_status, 0);
+    //         c->status = WEXITSTATUS(exit_status);
+    //         //close(buffer[1]);  // close write end
+    //     }
+    // }
 }
 
 /* Execute a sequence command */
