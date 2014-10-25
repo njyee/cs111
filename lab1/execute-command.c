@@ -26,6 +26,8 @@
 #include <sys/wait.h> // I think for WEXITSTATUS macro
 #include <fcntl.h>
 
+#define BYTE_LIMIT 1024
+
 void set_io(command_t c) {
     int infile_desc;
     int outfile_desc;
@@ -346,9 +348,6 @@ execute_switch(command_t c) {
 int
 prepare_profiling (char const *name)
 {
-  /* FIXME: Replace this with your implementation.  You may need to
-     add auxiliary functions and otherwise modify the source code.
-     You can also use external functions defined in the GNU C Library.  */
   error (0, 0, "warning: profiling not yet implemented");
   return -1;
 }
@@ -363,4 +362,5 @@ void
 execute_command (command_t c, int profiling)
 {
   execute_switch(c);
+  _exit(c->status);
 }
