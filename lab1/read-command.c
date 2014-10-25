@@ -24,24 +24,30 @@
 #include <ctype.h>   // for isalnum
 #include <string.h>  // for strcpy
 
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
-   
-/* FIXME: Define the type 'struct command_stream' here.  This should
-   complete the incomplete type declaration in command.h.  */
-
 #define EXECUTION_STATUS -1
 #define WORD_BUF_SIZE 100
+
+
+
+
+
+
 
 enum Elements
 {
     COMMAND,
-    PIPE,   // pipe or semicolon
+    PIPE,
     SEMICOLON,
     NEWLINE,
     SPECIAL,    // close parenthesis and special words like "if"
     REDIRECT
 };
+
+
+
+
+
+
 
 typedef struct command_node   *command_node_t;
 
@@ -55,8 +61,6 @@ void init_command(command_t command) {
     command->status = -1;
     command->input = NULL;
     command->output = NULL;
-    // memset(command->u.command, 0, 3*sizeof(command_t));
-    // memset(&command->u, 0, 3*sizeof(command->u));
     command->u.command[0] = NULL;
     command->u.command[1] = NULL;
     command->u.command[2] = NULL;
@@ -68,6 +72,12 @@ void init_node(struct command_node * node) {
     init_command(node->command);
     //node->next = (command_node_t) malloc(sizeof(struct command_node));
 }
+
+
+
+
+
+
 
 struct command_stream
 {
@@ -90,6 +100,12 @@ void command_stream_push(struct command_stream *stream, struct command_node node
         stream->head = temp;
     }
 }
+
+
+
+
+
+
 
 struct command_stack {
     struct command_node *top;
@@ -151,6 +167,12 @@ int command_stack_size(struct command_stack *stack) {
     return stack->size;
 }
 
+
+
+
+
+
+
 struct operator_node {
     int value;
     struct operator_node* next;
@@ -210,6 +232,13 @@ int operator_stack_empty(struct operator_stack *stack) {
 int operator_stack_size(struct operator_stack * stack) {
     return stack->size;
 }
+
+
+
+
+
+
+
 
 int is_valid_character(char c) {
     //return isalnum(c) || isspace(c) ||  is_other_character(c) || is_special_token(c);
@@ -279,6 +308,19 @@ int get_command_type(int op) {
     }
 }
 
+void
+print_error_message(int line_number, char *error_string) {
+    fprintf(stderr, "%d: Syntax: %s\n", line_number, error_string);
+    free(error_string);
+    exit(1);  //magic number
+}
+
+
+
+
+
+
+
 // used to combine 2 command nodes into a single command node
 struct command_node *combine_two_commands(struct command_node *first_command, struct command_node *second_command, int op) {
     // declarations
@@ -333,27 +375,22 @@ struct command_node *combine_three_commands(struct command_node *first_command, 
     return new_command_node;
 }
 
-void
-print_error_message(int line_number, char *error_string) {
-    fprintf(stderr, "%d: Syntax: %s\n", line_number, error_string);
-    free(error_string);
-    exit(1);  //magic number
-}
+
+
+
+
+
 
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
                  void *get_next_byte_argument)
 {
-    /* FIXME: Replace this with your implementation.  You may need to
-       add auxiliary functions and otherwise modify the source code.
-       You can also use external functions defined in the GNU C Library.  */
-
-    // int j;
     size_t i;  // index for appending character to word
 
     char c = '\0';  // current byte
     char r = '\0';  // redirect type
+
     int is_operator = 0;  // if set to true, run algorithm from class
     int is_special_word = 0;
     int is_redirect = 0;
@@ -361,8 +398,6 @@ make_command_stream (int (*get_next_byte) (void *),
     int number_of_words = 0;  // index for appending word
     int line_number_ref = 1;  // keep track of line number in case of error. 
     
-    //char word[100];
-    //char* words[100];
     char * word;
     char ** words;
     char * special_word;
@@ -371,14 +406,10 @@ make_command_stream (int (*get_next_byte) (void *),
     enum Elements follows = NEWLINE;
     
     command_node_t node;  // pointer
-    // command_t my_command;  // pointer
     
     struct operator_stack opstack;  // not pointer
     struct command_stack comstack;  // not pointer
-    
-    //struct command_stream comstream;  // not pointer
     struct command_stream *comstream;
-    
     struct operator_stack spec_op_stack;
     
     // init error_description
@@ -480,29 +511,13 @@ make_command_stream (int (*get_next_byte) (void *),
                         follows = SPECIAL;
                     else
                         follows = COMMAND;
-                    
-                    
-                    // if (strcmp(word, "if") || strcmp(word, "while") || strcmp(word, "until"))
-                    // {
-                    //     // push onto operator stack
-                    // }
-                    // else if (strcmp(word, "then") || strcmp(word, "else") || strcmp(word, "if") ||
-                    //          strcmp(word, "do") || strcmp(word, "done"))
-                    // {
-                    //     // validate (scope stack?)
-                    //     // process operator stack until reach preceding special word
-                    // }
+                
                 } else {
                 
                 // save word in words then reset
                 words[number_of_words] = (char*)malloc(sizeof(word)+1);
                 memcpy(words[number_of_words], word, sizeof(word)+1);
                 number_of_words++;
-                //words[number_of_words] = word;
-                // word = (char*) malloc(sizeof(word));
-                //word[0] = '\0';
-                //words[number_of_words] = (char*)malloc(sizeof(word));
-                //strcpy(words[number_of_words++], word);  // copy word into words[pos]            
                 }
                 
                 // reset word
@@ -513,11 +528,6 @@ make_command_stream (int (*get_next_byte) (void *),
                 if (c == '#')
                 {
                     // ignore remaining characters until reach newline
-                    // for (;;) {
-                    //     c = get_next_byte(get_next_byte_argument);
-                    //     if (c == '\n' || c == EOF)
-                    //         break;
-                    // }
                     do {
                         c = get_next_byte(get_next_byte_argument);
                         line_number_ref++;
@@ -526,20 +536,14 @@ make_command_stream (int (*get_next_byte) (void *),
                 if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
                 {
                     follows = COMMAND;
-                    // push simple command
-                    //node->command = (command_t)malloc(sizeof(struct command));
                     node->command->type = SIMPLE_COMMAND;
                     node->command->status = EXECUTION_STATUS;
                     node->command->input = NULL;
                     node->command->output = NULL;
                     node->command->u.word = words;
-                    // node->command->u.command[0] = NULL;
                     command_stack_push(&comstack, *node);
                     
                     // reset
-                    // node = (command_node_t) malloc(sizeof(struct command_node));  // Does this work?
-                    // my_command = (command_t)malloc(sizeof(struct command));
-                    // node->command = my_command;
                     init_node(node);
                     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                     words[0] = NULL;  //used to check if words is empty in future if statements
@@ -674,11 +678,6 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             if (is_operator)
             {
-                // follows = OPERATOR;
-                // get operator type from operator string
-                // char *operator_string = (char*)malloc(sizeof(c)+1);
-                // strcpy(operator_string, &c);
-                //int operator_type = get_operator_type(operator_string);  //operator_string is made up
                 int operator_type = -1; // default
                 struct operator_node op_node;
                 if (is_special_word)
@@ -751,25 +750,6 @@ make_command_stream (int (*get_next_byte) (void *),
                                     break;
                     }
                     operator_stack_push(&opstack, op_node);
-                    // if (is_special_word) {
-                    //     if (spec_op_stack.top != NULL) {
-                    //         int top_operator_value = spec_op_stack.top->value;
-                    //         if((operator_type == THEN_OP && top_operator_value == IF_OP)  ||
-                    //           (operator_type == ELSE_OP && top_operator_value == IF_OP)  ||
-                    //           (operator_type == FI_OP && top_operator_value == ELSE_OP)  ||
-                    //           (operator_type == FI_OP && top_operator_value == THEN_OP)  ||
-                    //           (operator_type == DO_OP && top_operator_value == WHILE_OP) ||
-                    //           (operator_type == DO_OP && top_operator_value == UNTIL_OP) ||
-                    //           (operator_type == DONE_OP && top_operator_value == DO_OP)  ||
-                    //           (operator_type == CLOSE_PAREN_OP && top_operator_value == OPEN_PAREN_OP)) {
-                    //                 operator_stack_push(&spec_op_stack, op_node);
-                    //         } else 
-                    //                 exit(312);
-                    //     } else {
-                    //         exit(313);
-                    //     }
-                    // }
-                    
                 }
                 if(operator_stack_top(&opstack)->value == FI_OP || operator_stack_top(&opstack)->value == DONE_OP
                         || operator_stack_top(&opstack)->value == CLOSE_PAREN_OP) 
@@ -833,35 +813,6 @@ make_command_stream (int (*get_next_byte) (void *),
                         print_error_message(line_number_ref, error_description);
                     }    
                 }
-                
-                
-                
-                // if encounter new commands (simple command)
-                //     put them on command stack
-                // if encounter new operator
-                //     if operator_stack == NULL
-                //         Add new operator to operator stack
-                //     else if precedence(new operator) > precedence(opstack.top) || new operator == 'if' 
-                //         Add new oparator to operator stack
-                //     else
-                //         while top.operator != (OPEN.PARENTHESIS || 'then' || 'else' || 'if') && precedence(new operator) <= precedence(top operator)
-                //           {
-                //             operator = operator-stack.pop()
-                //             second-command = command-stack.pop()
-                //             first-command = command-stack.pop()
-                //             new-command = combine(first-command, second-command, operator)
-                //             command-stack.push(new-command)
-                //             top-operator = operator-stack.peek()
-                //             if top-operator == NULL
-                //                 break;
-                //           }
-                //         operator-stack.push(new_operator)
-                //      if(operator-stack.top == "fi")
-                //             operator-stack.pop()
-                //             if(operator-stack.top == "then")
-                //                 pop and process twice
-                //             else if(operator-stack.top == "else")
-                //                 pop and process 3 times
             }
         }
 
@@ -876,7 +827,6 @@ make_command_stream (int (*get_next_byte) (void *),
     while (!command_stack_empty(&comstack)) {
         node = command_stack_pop(&comstack);
         command_stream_push(comstream, *node);
-        //command_stream_push(&comstream, *node);   
     }
     
     return comstream;  // We are C hackers
@@ -885,8 +835,6 @@ make_command_stream (int (*get_next_byte) (void *),
 command_t
 read_command_stream (command_stream_t s)
 {
-    /* FIXME: Replace this with your implementation too.  */
-    
     command_t c = NULL;
     if (s->head != NULL) {
         c = s->head->command;
