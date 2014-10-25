@@ -39,8 +39,8 @@ void set_io(command_t c) {
     }
     if(c->output != NULL) {
         //outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
-        //outfile_desc = open(c->output, O_WRONLY | O_CREAT, 0644);
-        outfile_desc = open(c->output, O_WRONLY | O_CREAT);
+        outfile_desc = open(c->output, O_WRONLY | O_CREAT, 0644);
+        //outfile_desc = open(c->output, O_WRONLY | O_CREAT);
         dup2(outfile_desc, 1);
     }
 }
@@ -282,7 +282,33 @@ execute_pipe_command(command_t c) {
 
 void
 execute_sequence_command(command_t c) {
+    pid_t left_pid;
+    pid_t right_pid;
+    int exit_status;
     
+    left_pid = fork();
+    if(pid < 0) {
+        error(1, errno, "fork failed");
+    } else if(left_pid == 0) {
+        execute_switch(c->u.command[0]);
+        _exit(c->u.command[0]->status);
+    } else {
+        waitpid(left_pid, &exit_status, 0);
+        
+        if(exit_status == 0) {
+            right_pid = fork();
+            if(right_pid < 0) {
+                error(1, errno, "fork failed");
+             } else if(right_pid == 0) {
+                execute_switch(c->u.command[1]);
+                _exit(c->u.command[1]->status);
+            } else {
+                waitpid(right_pid, &exit_status, 0);
+            }
+        }
+        
+        c->status = WEXITSTATUS(exit_status);
+    }
 }
 
 /* Execute a subshell command.
@@ -305,9 +331,11 @@ execute_subshell_command(command_t c) {
         else if(p == 0) { 
             set_io(c);
             execute_switch(c->u.command[0]);
+            _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
-            c->status = WEXITSTATUS(exit_status);
+            // c->status = WEXITSTATUS(exit_status);
+            _exit(WEXITSTATUS(exit_status));
         }
     } else {
         waitpid(p, &exit_status, 0);
@@ -332,15 +360,37 @@ execute_until_command(command_t c) {
 void
 execute_while_command(command_t c) {
     pid_t p;
-    int exit_status;
+    int exit_status = -1;
     
-    p = fork();
-    if(p < 0)
-        error(1, errno, "fork failed");
-    else if(p == 0) {
-        
-    } else {
-        
+    while (1) {
+        p = fork();
+        if(p < 0)
+            error(1, errno, "fork failed");
+        else if(p == 0) {
+            execute_switch(c->u.command[0]);
+            _exit(c->u.command[0]->status);
+        } else {
+            waitpid(p, &exit_status, 0);
+            if(exit_status == 0) {
+                p = fork();
+                if(p < 0)
+                    error(1, errno, "fork failed");
+                else if(p == 0) {
+                    execute_switch(c->u.command[1]);
+                    _exit(c->u.command[1]->status)
+                } else {
+                    waitpid(p, &exit_status, 0);
+                    if (exit_status != 0) {
+                        c->status = WEXITSTATUS(exit_status);
+                        break;
+                    }
+                }
+            }
+            else {
+                c->status = WEXITSTATUS(0);
+                break;
+            }
+        }
     }
 }
    
