@@ -51,19 +51,19 @@ struct command_node
     command_node_t next;
 };
 
+void init_command(command_t command) {
+    command->status = -1;
+    command->input = NULL;
+    command->output = NULL;
+    // memset(command->u.command, 0, 3*sizeof(command_t));
+    memset(&command->u, 0, 3*sizeof(command->u));
+}
+
 void init_node(struct command_node * node) {
     node->command = (command_t) malloc(sizeof(struct command));
     node->next = NULL;
     init_command(node->command);
     //node->next = (command_node_t) malloc(sizeof(struct command_node));
-}
-
-void init_command(command_node_t command) {
-    command->status = -1;
-    command->input = NULL;
-    command->output = NULL;
-    // memset(command->u.command, 0, 3*sizeof(command_t);
-    memset(&command->u, 0, 3*sizeof(command->u);
 }
 
 struct command_stream

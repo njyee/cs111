@@ -267,15 +267,15 @@ execute_pipe_command(command_t c) {
     
     pid = fork();
     if(pid < 0)
-        error
+        error(1, errno, "fork failed");
     else if(pid == 0) // child
         // Execute the left
-        
-        if(c.u->command[0] == 0)
-            // Execute the right
+        execute_switch(c->u.command[0]);
+        if(c.u->command[0]->status == 0)
+            execute_switch(c->u.command[1]);
     else // parent
-    
-    
+        waitpid(p, &exit_status, 0);
+        c->status = WEXITSTATUS(exit_status);
 */
 
 void
