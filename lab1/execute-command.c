@@ -159,10 +159,10 @@ execute_pipe_command(command_t c) {
         // set overall pipe exit status
         if(second_pid == returned_pid) {
             waitpid(first_pid, &exit_status, 0);
-            c->status = WEXITSTATUS(estatus);
+            c->status = WEXITSTATUS(exit_status);
         } else {
             waitpid(second_pid, &exit_status, 0);
-            c->status = WEXITSTATUS(estatus);
+            c->status = WEXITSTATUS(exit_status);
         }
     }
 }
@@ -206,7 +206,7 @@ execute_while_command(command_t c) {
    executed and executes it. */
 void
 execute_switch(command_t c) {
-    switch(c->command_type)
+    switch(c->type)
     {
         case SIMPLE_COMMAND:
             // execute_simple_command(c);
