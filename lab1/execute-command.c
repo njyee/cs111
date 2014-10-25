@@ -209,7 +209,7 @@ execute_switch(command_t c) {
     switch(c->type)
     {
         case SIMPLE_COMMAND:
-            // execute_simple_command(c);
+            execute_simple_command(c);
             break;
         case IF_COMMAND:
             // execute_if_command(c);
