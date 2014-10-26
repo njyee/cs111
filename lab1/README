@@ -6,10 +6,51 @@ Thomas Lutton
 304180703
 tlutton@ucla.edu
 
+================================================================================
+
+PART 1A:
+
 make check passes all test cases.
 
 Limitations:
 Arbitrary size limit of 100 imposed on char arrays and char* arrays.
-Some dynamically allocated memory may not be freed due to early stage of project.
+Some dynamically allocated memory may not be freed yet.
 
 Both limitations will be fixed in subsequent versions of Lab 1. 
+
+===============================================================================
+
+PART 1B:
+
+* Correctly executes all types of commands including:
+    - Simple command
+    - Simple command w/ exec
+    - Simple command w/ I/O redirection 
+    - Subshell commands
+    - Subshell commands w/ I/O redirection 
+    - Sequence
+    - Pipe
+    - Compound commands (if, while, until)
+    - Compound commands (if, while until) w/ I/O redirection
+    
+Limitations:
+
+Execution of our exec command does not prevent further processes from executing.
+
+i.e.    
+
+echo a
+exec echo b
+echo c 
+
+Normal Shell Output:  
+a
+b
+
+Our Shell Output:
+a
+b
+c
+
+================================================================================
+
