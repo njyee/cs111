@@ -44,10 +44,25 @@ void set_io(command_t c) {
         dup2(outfile_desc, 1);
     }
 }
+
+void propagate_io(command_t c) {
+    if(c->input != NULL)
+        while(i < 3 && c->u.command[i] != NULL)
+            c->u.command[i++]->input = c->input;
+    i = 0;
+    if(c->output != NULL)
+        while(i < 3 && c->u.command[i] != NULL)
+            c->u.command[i++]->output = c->output;
+}
    
 void execute_switch(command_t c); // function prototype
    
-/* Each command type gets its own "execute_...._command" function */
+/* TODO:
+    * Test
+    * Handle if/then/else output better (not essential)
+    * Remove unnecessary code/comments
+    * Sue Big Data Systems Inc
+*/
 
 /* Execute a simple command */
 
@@ -127,13 +142,7 @@ execute_if_command(command_t c) {
     int exit_status;
     int i = 0;
     
-    if(c->input != NULL)
-        while(i < 3 && c->u.command[i] != NULL)
-            c->u.command[i++]->input = c->input;
-    i = 0;
-    if(c->output != NULL)
-        while(i < 3 && c->u.command[i] != NULL)
-            c->u.command[i++]->output = c->output;
+    propagate_io(c);
     
     p = fork();
     if(p < 0)
@@ -355,6 +364,8 @@ execute_until_command(command_t c) {
     pid_t p;
     int exit_status = -1;
     
+    propagate_io(c);
+
     while (1) {
         p = fork();
         if(p < 0)
@@ -394,6 +405,8 @@ execute_while_command(command_t c) {
     pid_t p;
     int exit_status = -1;
     
+    propagate_io(c);
+
     while (1) {
         p = fork();
         if(p < 0)
