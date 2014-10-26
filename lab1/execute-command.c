@@ -37,9 +37,8 @@ void set_io(command_t c) {
         dup2(infile_desc, 0);
     }
     if(c->output != NULL) {
-        //outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT);
+        //outfile_desc = open(c->output, O_WRONLY | O_APPEND | O_CREAT, 0644);
         outfile_desc = open(c->output, O_WRONLY | O_CREAT, 0644);
-        //outfile_desc = open(c->output, O_WRONLY | O_CREAT);
         dup2(outfile_desc, 1);
     }
 }
@@ -47,12 +46,18 @@ void set_io(command_t c) {
 void propagate_io(command_t c) {
     int i = 0;
     if(c->input != NULL)
-        while(i < 3 && c->u.command[i] != NULL)
-            c->u.command[i++]->input = c->input;
+        while(i < 3 && c->u.command[i] != NULL) {
+            if (c->u.command[i]->input == NULL)
+                c->u.command[i]->input = c->input;
+            i++;
+        }
     i = 0;
     if(c->output != NULL)
-        while(i < 3 && c->u.command[i] != NULL)
-            c->u.command[i++]->output = c->output;
+        while(i < 3 && c->u.command[i] != NULL) {
+            if (c->u.command[i]->output == NULL)
+                c->u.command[i]->output = c->output;
+            i++;
+        }
 }
    
 void execute_switch(command_t c); // function prototype
