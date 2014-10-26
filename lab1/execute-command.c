@@ -45,6 +45,7 @@ void set_io(command_t c) {
 }
 
 void propagate_io(command_t c) {
+    int i = 0;
     if(c->input != NULL)
         while(i < 3 && c->u.command[i] != NULL)
             c->u.command[i++]->input = c->input;
@@ -98,7 +99,6 @@ void
 execute_if_command(command_t c) {
     pid_t p;
     int exit_status;
-    int i = 0;
     
     propagate_io(c);
     
