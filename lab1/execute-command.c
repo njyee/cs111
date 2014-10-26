@@ -105,7 +105,8 @@ execute_if_command(command_t c) {
     pid_t p;
     int exit_status;
     
-    propagate_io(c);
+    // propagate_io(c);
+    set_io(c);
     
     p = fork();
     if(p < 0)
@@ -253,7 +254,8 @@ execute_until_command(command_t c) {
     pid_t p;
     int exit_status = -1;
     
-    propagate_io(c);
+    // propagate_io(c);
+    set_io(c);
 
     while (1) {
         p = fork();
@@ -295,7 +297,8 @@ execute_while_command(command_t c) {
     pid_t p;
     int exit_status = -1;
     
-    propagate_io(c);
+    // propagate_io(c);
+    set_io(c);
 
     while (1) {
         p = fork();
@@ -381,5 +384,16 @@ command_status (command_t c)
 void
 execute_command (command_t c, int profiling)
 {
-  execute_switch(c);
+    pid_t p;
+    int exit_status;
+
+    p = fork();
+    if(p<0)
+        error(1, errno, "fork failed");
+    else if(p == 0) {
+        execute_switch(c);
+        _exit(c->status);
+    }
+    else
+        waitpid(p, &exit_status, 0);
 }
