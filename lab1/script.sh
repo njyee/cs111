@@ -8,13 +8,13 @@ echo foo
 
 # simple command exec
 
-exec echo bar
+#exec echo bar
 
 
 
 # simple command I/O redirection
 
-ls -al > a.txt
+ls -a > a.txt
 
 cat < a.txt
 
@@ -53,7 +53,7 @@ cat < d.txt | echo
 
 cat d.txt | tr a-z A-Z | sort -u
 
-ls -l |
+ls -a |
 cat
 
 
