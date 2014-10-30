@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <sys/resource.h>
+#include <math.h>
 
 #define BYTE_LIMIT 1024
 
@@ -343,6 +344,8 @@ execute_switch(command_t c) {
     struct timespec start, end, absolute;
     struct rusage self, children;
 
+    double real_time, absolute_time, user_usage, system_usage;
+
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     switch(c->type)
@@ -378,6 +381,12 @@ execute_switch(command_t c) {
 
     getrusage(RUSAGE_SELF, &self);
     getrusage(RUSAGE_CHILDREN, &children);
+
+    absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
+    real_time = (double) end.tv_sec
+              - (double) start.tv_sec
+              + (double) (end.tv_nsec * pow(10, -9))
+              - (double) (start.tv_nsec * pow(10, -9));
 }
 
 
