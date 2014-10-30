@@ -29,9 +29,10 @@
 #include <sys/resource.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 
 #define BYTE_LIMIT 1024
-#define ARBITRARY_LIMIT 100
+// #define ARBITRARY_LIMIT 100
 
 
 void set_io(command_t c) {
@@ -337,7 +338,10 @@ execute_while_command(command_t c) {
         }
     }
 }
-   
+
+
+static void
+print_command_prof (int indent, command_t c, char *buf);
 
 /* switch statement that figures out what kind of command needs to be 
    executed and executes it. */
@@ -349,9 +353,9 @@ execute_switch(command_t c) {
     double real_time, absolute_time, user_usage, system_usage;
 
     char buf[BYTE_LIMIT];
-    char tmp[ARBITRARY_LIMIT];
+    char tmp[BYTE_LIMIT];
     memset(buf, 0, BYTE_LIMIT);
-    memset(tmp, 0, ARBITRARY_LIMIT);
+    memset(tmp, 0, BYTE_LIMIT);
 
     clock_gettime(CLOCK_MONOTONIC, &start);
 
@@ -403,14 +407,16 @@ execute_switch(command_t c) {
 
     // format time and usage to correct precision
 
-    snprintf(tmp, ARBITRARY_LIMIT, "%f ", absolute_time);
-    strcat(buf, tmp);
-    snprintf(tmp, ARBITRARY_LIMIT, "%f ", real_time);
-    strcat(buf, tmp);
-    snprintf(tmp, ARBITRARY_LIMIT, "%f ", user_usage);
-    strcat(buf, tmp);
-    snprintf(tmp, ARBITRARY_LIMIT, "%f ", system_usage);
-    strcat(buf, tmp);
+    snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+
+    print_command_prof(0, c, tmp);
 }
 
 
@@ -442,4 +448,65 @@ execute_command (command_t c, int profiling)
 //    }
 //    else
 //        waitpid(p, &exit_status, 0);
+}
+
+
+static void
+print_command_prof (int indent, command_t c, char *buf)
+{
+  indent = 0;
+  switch (c->type)
+    {
+    case IF_COMMAND:
+    case UNTIL_COMMAND:
+    case WHILE_COMMAND:
+      snprintf (buf, BYTE_LIMIT, "%*s%s ", indent, "",
+          (c->type == IF_COMMAND ? "if"
+           : c->type == UNTIL_COMMAND ? "until" : "while"));
+      print_command_prof (indent + 2, c->u.command[0], buf);
+      snprintf (buf, BYTE_LIMIT, " %*s%s ", indent, "", c->type == IF_COMMAND ? "then" : "do");
+      print_command_prof (indent + 2, c->u.command[1], buf);
+      if (c->type == IF_COMMAND && c->u.command[2])
+    {
+      snprintf (buf, BYTE_LIMIT, " %*selse ", indent, "");
+      print_command_prof (indent + 2, c->u.command[2], buf);
+    }
+      snprintf (buf, BYTE_LIMIT, " %*s%s", indent, "", c->type == IF_COMMAND ? "fi" : "done");
+      break;
+
+    case SEQUENCE_COMMAND:
+    case PIPE_COMMAND:
+      {
+    print_command_prof (indent + 2 * (c->u.command[0]->type != c->type),
+                c->u.command[0], buf);
+    char separator = c->type == SEQUENCE_COMMAND ? ';' : '|';
+    snprintf (buf, BYTE_LIMIT, " %*s%c ", indent, "", separator);
+    print_command_prof (indent + 2 * (c->u.command[1]->type != c->type),
+                c->u.command[1], buf);
+    break;
+      }
+
+    case SIMPLE_COMMAND:
+      {
+    char **w = c->u.word;
+    snprintf (buf, BYTE_LIMIT, "%*s%s", indent, "", *w);
+    while (*++w)
+      snprintf (buf, BYTE_LIMIT, " %s", *w);
+    break;
+      }
+
+    case SUBSHELL_COMMAND:
+      snprintf (buf, BYTE_LIMIT, "%*s( ", indent, "");
+      print_command_prof (indent + 1, c->u.command[0], buf);
+      snprintf (buf, BYTE_LIMIT, " %*s)", indent, "");
+      break;
+
+    default:
+      abort ();
+    }
+
+  if (c->input)
+    snprintf (buf, BYTE_LIMIT, "<%s", c->input);
+  if (c->output)
+    snprintf (buf, BYTE_LIMIT, ">%s", c->output);
 }
