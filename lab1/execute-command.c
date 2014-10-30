@@ -387,6 +387,12 @@ execute_switch(command_t c) {
               - (double) start.tv_sec
               + (double) (end.tv_nsec * pow(10, -9))
               - (double) (start.tv_nsec * pow(10, -9));
+
+    user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
+               + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
+
+    system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
+                 + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
 }
 
 
