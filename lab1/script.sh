@@ -64,5 +64,9 @@ if echo 1
 then echo 2
 fi
 
+if echo 3; then echo 4; fi
+
+if echo 5; then echo 6; fi > e.txt
+
 # while command
 # until command
