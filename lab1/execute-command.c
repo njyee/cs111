@@ -347,6 +347,8 @@ print_command_prof (int indent, command_t c, char *buf);
    executed and executes it. */
 void
 execute_switch(command_t c) {
+    int p;
+
     struct timespec start, end, absolute;
     struct rusage self, children;
 
@@ -354,6 +356,7 @@ execute_switch(command_t c) {
 
     char buf[BYTE_LIMIT];
     char tmp[BYTE_LIMIT];
+    char newline[] = "\n";
     memset(buf, 0, BYTE_LIMIT);
     memset(tmp, 0, BYTE_LIMIT);
 
@@ -418,6 +421,12 @@ execute_switch(command_t c) {
 
     memset(tmp, 0, BYTE_LIMIT);
     print_command_prof(0, c, tmp);
+
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+
+    p = open("log", O_CREAT);
+    write(p, (const void *) buf, strlen(buf));
+    write(p, (const void *) newline, 1);
 }
 
 
