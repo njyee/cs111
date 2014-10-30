@@ -25,8 +25,11 @@
 #include <unistd.h>
 #include <sys/wait.h> // I think for WEXITSTATUS macro
 #include <fcntl.h>
+#include <time.h>
+#include <sys/resource.h>
 
 #define BYTE_LIMIT 1024
+
 
 void set_io(command_t c) {
     int infile_desc;
@@ -43,7 +46,7 @@ void set_io(command_t c) {
     }
 }
 
-void propagate_io(command_t c) {
+/*void propagate_io(command_t c) {
     int i = 0;
     if(c->input != NULL)
         while(i < 3 && c->u.command[i] != NULL) {
@@ -58,7 +61,7 @@ void propagate_io(command_t c) {
                 c->u.command[i]->output = c->output;
             i++;
         }
-}
+}*/
    
 void execute_switch(command_t c); // function prototype
 
@@ -337,6 +340,11 @@ execute_while_command(command_t c) {
    executed and executes it. */
 void
 execute_switch(command_t c) {
+    struct timespec start, end, absolute;
+    struct rusage self, children;
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     switch(c->type)
     {
         case SIMPLE_COMMAND:
@@ -364,7 +372,12 @@ execute_switch(command_t c) {
             error(1, errno, "invalid command type passed to execute_switch");
             break;
     }
-    
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    clock_gettime(CLOCK_REALTIME, &absolute);
+
+    getrusage(RUSAGE_SELF, &self);
+    getrusage(RUSAGE_CHILDREN, &children);
 }
 
 
@@ -384,16 +397,16 @@ command_status (command_t c)
 void
 execute_command (command_t c, int profiling)
 {
-    pid_t p;
-    int exit_status;
+//    pid_t p;
+//    int exit_status;
 
-    p = fork();
-    if(p<0)
-        error(1, errno, "fork failed");
-    else if(p == 0) {
+//    p = fork();
+//    if(p<0)
+//        error(1, errno, "fork failed");
+//    else if(p == 0) {
         execute_switch(c);
-        _exit(c->status);
-    }
-    else
-        waitpid(p, &exit_status, 0);
+//        _exit(c->status);
+//    }
+//    else
+//        waitpid(p, &exit_status, 0);
 }

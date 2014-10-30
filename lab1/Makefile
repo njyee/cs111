@@ -46,7 +46,7 @@ DIST_SOURCES = \
   $(TESTS) check-dist COPYING README
 
 profsh: $(PROFSH_OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(PROFSH_OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $(PROFSH_OBJECTS) -lrt
 
 alloc.o: alloc.h
 execute-command.o main.o print-command.o read-command.o: command.h
