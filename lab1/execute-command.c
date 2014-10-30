@@ -424,7 +424,7 @@ execute_switch(command_t c) {
 
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
 
-    p = open("log", O_CREAT | O_WRONLY, 0644);
+    p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
     write(p, (const void *) buf, strlen(buf));
     write(p, (const void *) newline, 1);
 }
@@ -508,17 +508,18 @@ print_command_prof (int indent, command_t c, char *buf)
     char **w = c->u.word;
     snprintf (tmp, BYTE_LIMIT, "%*s%s", indent, "", *w);
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-    while (*++w)
+    while (*++w) {
       snprintf (tmp, BYTE_LIMIT, " %s", *w);
       strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    }
     break;
       }
 
     case SUBSHELL_COMMAND:
-      snprintf (tmp, BYTE_LIMIT, "%*s( ", indent, "");
+      snprintf (tmp, BYTE_LIMIT, "%*s(", indent, "");
       strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       print_command_prof (indent + 1, c->u.command[0], buf);
-      snprintf (tmp, BYTE_LIMIT, " %*s)", indent, "");
+      snprintf (tmp, BYTE_LIMIT, "%*s)", indent, "");
       strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       break;
 
