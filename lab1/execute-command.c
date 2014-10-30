@@ -416,6 +416,7 @@ execute_switch(command_t c) {
     snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
 
+    memset(tmp, 0, BYTE_LIMIT);
     print_command_prof(0, c, tmp);
 }
 
@@ -454,24 +455,30 @@ execute_command (command_t c, int profiling)
 static void
 print_command_prof (int indent, command_t c, char *buf)
 {
+  char tmp[BYTE_LIMIT];
+  memset(tmp, 0, BYTE_LIMIT);
   indent = 0;
   switch (c->type)
     {
     case IF_COMMAND:
     case UNTIL_COMMAND:
     case WHILE_COMMAND:
-      snprintf (buf, BYTE_LIMIT, "%*s%s ", indent, "",
+      snprintf (tmp, BYTE_LIMIT, "%*s%s ", indent, "",
           (c->type == IF_COMMAND ? "if"
            : c->type == UNTIL_COMMAND ? "until" : "while"));
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       print_command_prof (indent + 2, c->u.command[0], buf);
-      snprintf (buf, BYTE_LIMIT, " %*s%s ", indent, "", c->type == IF_COMMAND ? "then" : "do");
+      snprintf (tmp, BYTE_LIMIT, " %*s%s ", indent, "", c->type == IF_COMMAND ? "then" : "do");
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       print_command_prof (indent + 2, c->u.command[1], buf);
       if (c->type == IF_COMMAND && c->u.command[2])
     {
-      snprintf (buf, BYTE_LIMIT, " %*selse ", indent, "");
+      snprintf (tmp, BYTE_LIMIT, " %*selse ", indent, "");
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       print_command_prof (indent + 2, c->u.command[2], buf);
     }
-      snprintf (buf, BYTE_LIMIT, " %*s%s", indent, "", c->type == IF_COMMAND ? "fi" : "done");
+      snprintf (tmp, BYTE_LIMIT, " %*s%s", indent, "", c->type == IF_COMMAND ? "fi" : "done");
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       break;
 
     case SEQUENCE_COMMAND:
@@ -480,7 +487,8 @@ print_command_prof (int indent, command_t c, char *buf)
     print_command_prof (indent + 2 * (c->u.command[0]->type != c->type),
                 c->u.command[0], buf);
     char separator = c->type == SEQUENCE_COMMAND ? ';' : '|';
-    snprintf (buf, BYTE_LIMIT, " %*s%c ", indent, "", separator);
+    snprintf (tmp, BYTE_LIMIT, " %*s%c ", indent, "", separator);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
     print_command_prof (indent + 2 * (c->u.command[1]->type != c->type),
                 c->u.command[1], buf);
     break;
@@ -489,24 +497,32 @@ print_command_prof (int indent, command_t c, char *buf)
     case SIMPLE_COMMAND:
       {
     char **w = c->u.word;
-    snprintf (buf, BYTE_LIMIT, "%*s%s", indent, "", *w);
+    snprintf (tmp, BYTE_LIMIT, "%*s%s", indent, "", *w);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
     while (*++w)
-      snprintf (buf, BYTE_LIMIT, " %s", *w);
+      snprintf (tmp, BYTE_LIMIT, " %s", *w);
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
     break;
       }
 
     case SUBSHELL_COMMAND:
-      snprintf (buf, BYTE_LIMIT, "%*s( ", indent, "");
+      snprintf (tmp, BYTE_LIMIT, "%*s( ", indent, "");
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       print_command_prof (indent + 1, c->u.command[0], buf);
-      snprintf (buf, BYTE_LIMIT, " %*s)", indent, "");
+      snprintf (tmp, BYTE_LIMIT, " %*s)", indent, "");
+      strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
       break;
 
     default:
       abort ();
     }
 
-  if (c->input)
-    snprintf (buf, BYTE_LIMIT, "<%s", c->input);
-  if (c->output)
-    snprintf (buf, BYTE_LIMIT, ">%s", c->output);
+  if (c->input) {
+    snprintf (tmp, BYTE_LIMIT, "<%s", c->input);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+  }
+  if (c->output) {
+    snprintf (tmp, BYTE_LIMIT, ">%s", c->output);
+    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+  }
 }
