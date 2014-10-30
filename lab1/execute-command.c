@@ -424,7 +424,7 @@ execute_switch(command_t c) {
 
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
 
-    p = open("log", O_CREAT);
+    p = open("log", O_CREAT | O_WRONLY, 0644);
     write(p, (const void *) buf, strlen(buf));
     write(p, (const void *) newline, 1);
 }
