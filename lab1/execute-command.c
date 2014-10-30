@@ -28,8 +28,10 @@
 #include <time.h>
 #include <sys/resource.h>
 #include <math.h>
+#include <string.h>
 
 #define BYTE_LIMIT 1024
+#define ARBITRARY_LIMIT 100
 
 
 void set_io(command_t c) {
@@ -346,6 +348,11 @@ execute_switch(command_t c) {
 
     double real_time, absolute_time, user_usage, system_usage;
 
+    char buf[BYTE_LIMIT];
+    char tmp[ARBITRARY_LIMIT];
+    memset(buf, 0, BYTE_LIMIT);
+    memset(tmp, 0, ARBITRARY_LIMIT);
+
     clock_gettime(CLOCK_MONOTONIC, &start);
 
     switch(c->type)
@@ -393,6 +400,17 @@ execute_switch(command_t c) {
 
     system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
                  + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
+
+    // format time and usage to correct precision
+
+    snprintf(tmp, ARBITRARY_LIMIT, "%f ", absolute_time);
+    strcat(buf, tmp);
+    snprintf(tmp, ARBITRARY_LIMIT, "%f ", real_time);
+    strcat(buf, tmp);
+    snprintf(tmp, ARBITRARY_LIMIT, "%f ", user_usage);
+    strcat(buf, tmp);
+    snprintf(tmp, ARBITRARY_LIMIT, "%f ", system_usage);
+    strcat(buf, tmp);
 }
 
 
