@@ -80,7 +80,7 @@ void execute_switch(command_t c, int profiling); // function prototype
 /* Execute a simple command */
 
 void
-execute_simple_command(command_t c, int profiling) {
+execute_simple_command(command_t c) {
     pid_t p = fork();
     int exit_status;
     
@@ -423,7 +423,7 @@ execute_switch(command_t c, int profiling) {
     switch(c->type)
     {
         case SIMPLE_COMMAND:
-            execute_simple_command(c, profiling);
+            execute_simple_command(c);
             break;
         case IF_COMMAND:
             execute_if_command(c, profiling);
