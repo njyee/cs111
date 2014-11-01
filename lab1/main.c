@@ -51,7 +51,7 @@ main (int argc, char **argv)
   bool print_tree = false;
   char const *profile_name = 0;
   
-  // int p;
+  int p;
 
   struct timespec start, end, absolute;
   struct rusage self, children;
@@ -114,7 +114,7 @@ main (int argc, char **argv)
 	}
     }
     
-  if (profling != -1) {
+  if (profiling != -1) {
     clock_gettime(CLOCK_MONOTONIC, &end);
     clock_gettime(CLOCK_REALTIME, &absolute);
   
@@ -144,8 +144,10 @@ main (int argc, char **argv)
     snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
   
+    pid_t pid = getpid();
+  
     memset(tmp, 0, BYTE_LIMIT);
-    snprintf(tmp, BYTE_LIMIT, "[%d]", p);
+    snprintf(tmp, BYTE_LIMIT, "[%d]", pid);
   
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
   
