@@ -16,8 +16,6 @@ Limitations:
 Arbitrary size limit of 100 imposed on char arrays and char* arrays.
 Some dynamically allocated memory may not be freed yet.
 
-Both limitations will be fixed in subsequent versions of Lab 1. 
-
 ===============================================================================
 
 PART 1B:
@@ -54,3 +52,26 @@ c
 
 ================================================================================
 
+PART 1C:
+
+* Correctly prints all aspects of profiling information including:
+    - real time
+    - absolute time
+    - user resource usage
+    - system resource usage
+    
+Note about pipe race condition: 
+
+Our implementation of execute_pipe_command (from PART 1B) does not allow
+for there to be a race condition when writing to the log file. We
+implemented execute_pipe_command in such a way that the command that executes
+on the left side of the pipe must finish its execution and close the 
+write end of the pipe before the right side process can exit.  This means that
+our left and right sides cannot have a race condition because the left is 
+always guaranteed to finish before the right and thus write to the file first.
+
+This is a trade off.  While our implementation eliminates the possibility of 
+a race condition when writing to the log file, it has the potential to 
+sacrifice performance if the right side process finishes executing before
+the left side finishes.  In this case the right side hangs until the left side
+closes the write end of the pipe. 

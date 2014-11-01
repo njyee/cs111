@@ -240,7 +240,8 @@ execute_subshell_command(command_t c, int profiling) {
     memset(buf, 0, BYTE_LIMIT);
     memset(tmp, 0, BYTE_LIMIT);
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    if (profiling != -1)
+        clock_gettime(CLOCK_MONOTONIC, &start);
     
     p = fork();
     if (p<0)
@@ -261,47 +262,49 @@ execute_subshell_command(command_t c, int profiling) {
         }
     } else {
         waitpid(p, &exit_status, 0);
-        c->status = WEXITSTATUS(exit_status);
         
-        clock_gettime(CLOCK_MONOTONIC, &end);
-        clock_gettime(CLOCK_REALTIME, &absolute);
-    
-        getrusage(RUSAGE_SELF, &self);
-        getrusage(RUSAGE_CHILDREN, &children);
-    
-        absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
-        real_time = (double) end.tv_sec
-                  - (double) start.tv_sec
-                  + (double) (end.tv_nsec * pow(10, -9))
-                  - (double) (start.tv_nsec * pow(10, -9));
-    
-        user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
-                   + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
-    
-        system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
-                     + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
-    
-        // format time and usage to correct precision
-    
-        snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
-        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-        snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
-        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-        snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
-        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-        snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
-        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-    
-        memset(tmp, 0, BYTE_LIMIT);
-        //print_command_prof(0, c, tmp);
+        if (profiling != -1) {
+            c->status = WEXITSTATUS(exit_status);
+            
+            clock_gettime(CLOCK_MONOTONIC, &end);
+            clock_gettime(CLOCK_REALTIME, &absolute);
         
-        snprintf(tmp, BYTE_LIMIT, "[%d]", p);
-        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+            getrusage(RUSAGE_SELF, &self);
+            getrusage(RUSAGE_CHILDREN, &children);
         
-        //p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
-        write(profiling, (const void *) buf, strlen(buf));
-        write(profiling, (const void *) newline, 1);
+            absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
+            real_time = (double) end.tv_sec
+                      - (double) start.tv_sec
+                      + (double) (end.tv_nsec * pow(10, -9))
+                      - (double) (start.tv_nsec * pow(10, -9));
         
+            user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
+                       + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
+        
+            system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
+                         + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
+        
+            // format time and usage to correct precision
+        
+            snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
+            strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+            snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
+            strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+            snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
+            strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+            snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
+            strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+        
+            memset(tmp, 0, BYTE_LIMIT);
+            //print_command_prof(0, c, tmp);
+            
+            snprintf(tmp, BYTE_LIMIT, "[%d]", p);
+            strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+            
+            //p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
+            write(profiling, (const void *) buf, strlen(buf));
+            write(profiling, (const void *) newline, 1);
+        }
     }
 }
 
@@ -398,8 +401,8 @@ print_command_prof (int indent, command_t c, char *buf);
 /* switch statement that figures out what kind of command needs to be 
    executed and executes it. */
 void
-execute_switch(command_t c) {
-    int p;
+execute_switch(command_t c, int profiling) {
+    // int p;
 
     struct timespec start, end, absolute;
     struct rusage self, children;
@@ -412,9 +415,10 @@ execute_switch(command_t c) {
     memset(buf, 0, BYTE_LIMIT);
     memset(tmp, 0, BYTE_LIMIT);
 
-    clock_gettime(CLOCK_MONOTONIC, &start);
+    if (profiling != -1)
+        clock_gettime(CLOCK_MONOTONIC, &start);
     
-    p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
+    // p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
 
     switch(c->type)
     {
@@ -431,7 +435,7 @@ execute_switch(command_t c) {
             execute_sequence_command(c);
             break;
         case SUBSHELL_COMMAND:
-            execute_subshell_command(c, p);
+            execute_subshell_command(c, profiling);
             break;
         case UNTIL_COMMAND:
             execute_until_command(c);
@@ -444,50 +448,51 @@ execute_switch(command_t c) {
             break;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    clock_gettime(CLOCK_REALTIME, &absolute);
-
-    getrusage(RUSAGE_SELF, &self);
-    getrusage(RUSAGE_CHILDREN, &children);
-
-    absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
-    real_time = (double) end.tv_sec
-              - (double) start.tv_sec
-              + (double) (end.tv_nsec * pow(10, -9))
-              - (double) (start.tv_nsec * pow(10, -9));
-
-    user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
-               + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
-
-    system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
-                 + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
-
-    // format time and usage to correct precision
-
-    snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
-    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-    snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
-    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-    snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
-    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-    snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
-    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-
-    memset(tmp, 0, BYTE_LIMIT);
-    print_command_prof(0, c, tmp);
-
-    strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
-
-    write(p, (const void *) buf, strlen(buf));
-    write(p, (const void *) newline, 1);
+    if (profiling != -1) {
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        clock_gettime(CLOCK_REALTIME, &absolute);
+    
+        getrusage(RUSAGE_SELF, &self);
+        getrusage(RUSAGE_CHILDREN, &children);
+    
+        absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
+        real_time = (double) end.tv_sec
+                  - (double) start.tv_sec
+                  + (double) (end.tv_nsec * pow(10, -9))
+                  - (double) (start.tv_nsec * pow(10, -9));
+    
+        user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
+                   + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
+    
+        system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
+                     + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
+    
+        // format time and usage to correct precision
+    
+        snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
+        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+        snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
+        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+        snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
+        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+        snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
+        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    
+        memset(tmp, 0, BYTE_LIMIT);
+        print_command_prof(0, c, tmp);
+    
+        strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+    
+        write(profiling, (const void *) buf, strlen(buf));
+        write(profiling, (const void *) newline, 1);
+    }
 }
 
 
 int
 prepare_profiling (char const *name)
 {
-  error (0, 0, "warning: profiling not yet implemented");
-  return -1;
+  return open(name, O_CREAT | O_WRONLY | O_APPEND, 0644);;
 }
 
 int
@@ -506,7 +511,7 @@ execute_command (command_t c, int profiling)
     if(p<0)
         error(1, errno, "fork failed");
     else if(p == 0) {
-        execute_switch(c);
+        execute_switch(c, profiling);
         _exit(c->status);
     }
     else
