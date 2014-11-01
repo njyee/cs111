@@ -80,7 +80,7 @@ void execute_switch(command_t c, int profiling); // function prototype
 /* Execute a simple command */
 
 void
-execute_simple_command(command_t c) {
+execute_simple_command(command_t c, int profiling) {
     pid_t p = fork();
     int exit_status;
     
@@ -107,7 +107,7 @@ execute_simple_command(command_t c) {
     if a; then b; fi > file */
 
 void
-execute_if_command(command_t c) {
+execute_if_command(command_t c, int profiling) {
     pid_t p;
     int exit_status;
     
@@ -118,7 +118,7 @@ execute_if_command(command_t c) {
     if(p < 0)
         error(1, errno, "fork failed");
     else if(p == 0) { // child
-        execute_switch(c->u.command[0], -1);
+        execute_switch(c->u.command[0], profiling);
         _exit(c->u.command[0]->status);
     } else { // parent
         waitpid(p, &exit_status, 0);
@@ -127,10 +127,10 @@ execute_if_command(command_t c) {
             error(1, errno, "fork failed");
         else if(p == 0) {
             if(exit_status == 0) { // success
-                execute_switch(c->u.command[1], -1);
+                execute_switch(c->u.command[1], profiling);
                 _exit(c->u.command[1]->status);
             } else if(c->u.command[2] != NULL) {
-                execute_switch(c->u.command[2], -1);
+                execute_switch(c->u.command[2], profiling);
                 _exit(c->u.command[2]->status);
             }
         } else {
@@ -144,7 +144,7 @@ execute_if_command(command_t c) {
 /* Execute a pipe command */
 
 void
-execute_pipe_command(command_t c) {
+execute_pipe_command(command_t c, int profiling) {
     pid_t first_pid;
     pid_t second_pid;
     int buffer[2];
@@ -162,7 +162,7 @@ execute_pipe_command(command_t c) {
         if(dup2(buffer[1], 1) < 0) {
             error(1, errno, "dup2 failed for first_pid");
         }
-        execute_switch(c->u.command[0], -1);
+        execute_switch(c->u.command[0], profiling);
         _exit(c->u.command[0]->status);
     }
 
@@ -174,7 +174,7 @@ execute_pipe_command(command_t c) {
         if(dup2(buffer[0], 0) < 0) {
             error(1, errno, "dup2 failed for second_pid");
         }
-        execute_switch(c->u.command[1], -1);
+        execute_switch(c->u.command[1], profiling);
         _exit(c->u.command[1]->status);
     }
     
@@ -189,7 +189,7 @@ execute_pipe_command(command_t c) {
 /* Execute a sequence command */
 
 void
-execute_sequence_command(command_t c) {
+execute_sequence_command(command_t c, int profiling) {
     pid_t left_pid;
     pid_t right_pid;
     int exit_status;
@@ -198,7 +198,7 @@ execute_sequence_command(command_t c) {
     if(left_pid < 0) {
         error(1, errno, "fork failed");
     } else if(left_pid == 0) {
-        execute_switch(c->u.command[0], -1);
+        execute_switch(c->u.command[0], profiling);
         _exit(c->u.command[0]->status);
     } else {
         waitpid(left_pid, &exit_status, 0);
@@ -208,7 +208,7 @@ execute_sequence_command(command_t c) {
             if(right_pid < 0) {
                 error(1, errno, "fork failed");
              } else if(right_pid == 0) {
-                execute_switch(c->u.command[1], -1);
+                execute_switch(c->u.command[1], profiling);
                 _exit(c->u.command[1]->status);
             } else {
                 waitpid(right_pid, &exit_status, 0);
@@ -312,7 +312,7 @@ execute_subshell_command(command_t c, int profiling) {
 /* Execute an until command */
 
 void
-execute_until_command(command_t c) {
+execute_until_command(command_t c, int profiling) {
     pid_t p;
     int exit_status = -1;
     
@@ -324,7 +324,7 @@ execute_until_command(command_t c) {
         if(p < 0)
             error(1, errno, "fork failed");
         else if(p == 0) {
-            execute_switch(c->u.command[0], -1);
+            execute_switch(c->u.command[0], profiling);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
@@ -333,7 +333,7 @@ execute_until_command(command_t c) {
                 if(p < 0)
                     error(1, errno, "fork failed");
                 else if(p == 0) {
-                    execute_switch(c->u.command[1], -1);
+                    execute_switch(c->u.command[1], profiling);
                     _exit(c->u.command[1]->status);
                 } else {
                     waitpid(p, &exit_status, 0);
@@ -355,7 +355,7 @@ execute_until_command(command_t c) {
 /* Execute a while command */
 
 void
-execute_while_command(command_t c) {
+execute_while_command(command_t c, int profiling) {
     pid_t p;
     int exit_status = -1;
     
@@ -367,7 +367,7 @@ execute_while_command(command_t c) {
         if(p < 0)
             error(1, errno, "fork failed");
         else if(p == 0) {
-            execute_switch(c->u.command[0], -1);
+            execute_switch(c->u.command[0], profiling);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
@@ -376,7 +376,7 @@ execute_while_command(command_t c) {
                 if(p < 0)
                     error(1, errno, "fork failed");
                 else if(p == 0) {
-                    execute_switch(c->u.command[1], -1);
+                    execute_switch(c->u.command[1], profiling);
                     _exit(c->u.command[1]->status);
                 } else {
                     waitpid(p, &exit_status, 0);
@@ -423,25 +423,25 @@ execute_switch(command_t c, int profiling) {
     switch(c->type)
     {
         case SIMPLE_COMMAND:
-            execute_simple_command(c);
+            execute_simple_command(c, profiling);
             break;
         case IF_COMMAND:
-            execute_if_command(c);
+            execute_if_command(c, profiling);
             break;
         case PIPE_COMMAND:
-            execute_pipe_command(c);
+            execute_pipe_command(c, profiling);
             break;
         case SEQUENCE_COMMAND:
-            execute_sequence_command(c);
+            execute_sequence_command(c, profiling);
             break;
         case SUBSHELL_COMMAND:
             execute_subshell_command(c, profiling);
             break;
         case UNTIL_COMMAND:
-            execute_until_command(c);
+            execute_until_command(c, profiling);
             break;
         case WHILE_COMMAND:
-            execute_while_command(c);
+            execute_while_command(c, profiling);
             break;
         default:
             error(1, errno, "invalid command type passed to execute_switch");
