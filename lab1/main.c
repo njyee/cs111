@@ -20,6 +20,10 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
+#include <sys/resource.h>
+#include <math.h>
+#include <string.h>
 
 #include "command.h"
 
