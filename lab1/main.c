@@ -24,6 +24,7 @@
 #include <sys/resource.h>
 #include <math.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "command.h"
 

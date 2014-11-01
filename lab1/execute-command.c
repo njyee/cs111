@@ -22,13 +22,12 @@
 #include <error.h>
 #include <stdlib.h>
 #include <string.h>   // for strcmp
-#include <unistd.h>
+#include <unistd.h>   // for fork
 #include <sys/wait.h> // I think for WEXITSTATUS macro
-#include <fcntl.h>
+#include <fcntl.h>    // for open
 #include <time.h>
 #include <sys/resource.h>
 #include <math.h>
-#include <string.h>
 #include <stdio.h>
 
 // #define BYTE_LIMIT 1024
