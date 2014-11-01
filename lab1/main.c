@@ -51,7 +51,7 @@ main (int argc, char **argv)
   bool print_tree = false;
   char const *profile_name = 0;
   
-  int p;
+  pid_t pid;
 
   struct timespec start, end, absolute;
   struct rusage self, children;
@@ -144,7 +144,7 @@ main (int argc, char **argv)
     snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
     strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
   
-    pid_t pid = getpid();
+    pid = getpid();
   
     memset(tmp, 0, BYTE_LIMIT);
     snprintf(tmp, BYTE_LIMIT, "[%d]", pid);

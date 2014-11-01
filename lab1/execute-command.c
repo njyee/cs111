@@ -253,7 +253,7 @@ execute_subshell_command(command_t c, int profiling) {
             error(1, errno, "second fork failed");
         else if(p == 0) { 
             set_io(c);
-            execute_switch(c->u.command[0], -1);
+            execute_switch(c->u.command[0], profiling);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
