@@ -65,6 +65,8 @@ main (int argc, char **argv)
 
   clock_gettime(CLOCK_MONOTONIC, &start);
   
+  p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
+  
   program_name = argv[0];
 
   for (;;)
@@ -145,7 +147,6 @@ main (int argc, char **argv)
 
   strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
 
-  p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
   write(p, (const void *) buf, strlen(buf));
   write(p, (const void *) newline, 1);
 
