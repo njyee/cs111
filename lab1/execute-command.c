@@ -499,18 +499,18 @@ command_status (command_t c)
 void
 execute_command (command_t c, int profiling)
 {
-//    pid_t p;
-//    int exit_status;
+    pid_t p;
+    int exit_status;
 
-//    p = fork();
-//    if(p<0)
-//        error(1, errno, "fork failed");
-//    else if(p == 0) {
+    p = fork();
+    if(p<0)
+        error(1, errno, "fork failed");
+    else if(p == 0) {
         execute_switch(c);
-//        _exit(c->status);
-//    }
-//    else
-//        waitpid(p, &exit_status, 0);
+        _exit(c->status);
+    }
+    else
+        waitpid(p, &exit_status, 0);
 }
 
 

@@ -25,6 +25,7 @@
 #include <math.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>   // for fork, write
 
 #include "command.h"
 
