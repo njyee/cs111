@@ -44,6 +44,22 @@ main (int argc, char **argv)
   int command_number = 1;
   bool print_tree = false;
   char const *profile_name = 0;
+  
+  int p;
+
+  struct timespec start, end, absolute;
+  struct rusage self, children;
+
+  double real_time, absolute_time, user_usage, system_usage;
+
+  char buf[BYTE_LIMIT];
+  char tmp[BYTE_LIMIT];
+  char newline[] = "\n";
+  memset(buf, 0, BYTE_LIMIT);
+  memset(tmp, 0, BYTE_LIMIT);
+
+  clock_gettime(CLOCK_MONOTONIC, &start);
+  
   program_name = argv[0];
 
   for (;;)
@@ -89,6 +105,44 @@ main (int argc, char **argv)
 	  execute_command (command, profiling);
 	}
     }
+    
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  clock_gettime(CLOCK_REALTIME, &absolute);
+
+  getrusage(RUSAGE_SELF, &self);
+  getrusage(RUSAGE_CHILDREN, &children);
+
+  absolute_time = (double) absolute.tv_sec + (double) (absolute.tv_nsec * pow(10, -9));
+  real_time = (double) end.tv_sec
+            - (double) start.tv_sec
+            + (double) (end.tv_nsec * pow(10, -9))
+            - (double) (start.tv_nsec * pow(10, -9));
+
+  user_usage = (double) self.ru_utime.tv_sec + (double) (self.ru_utime.tv_usec * pow(10, -6))
+             + (double) children.ru_utime.tv_sec + (double) (children.ru_utime.tv_usec * pow(10, -6));
+
+  system_usage = (double) self.ru_stime.tv_sec + (double) (self.ru_stime.tv_usec * pow(10, -6))
+               + (double) children.ru_stime.tv_sec + (double) (children.ru_stime.tv_usec * pow(10, -6));
+
+  // format time and usage to correct precision
+
+  snprintf(tmp, BYTE_LIMIT, "%f ", absolute_time);
+  strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+  snprintf(tmp, BYTE_LIMIT, "%f ", real_time);
+  strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+  snprintf(tmp, BYTE_LIMIT, "%f ", user_usage);
+  strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+  snprintf(tmp, BYTE_LIMIT, "%f ", system_usage);
+  strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+
+  memset(tmp, 0, BYTE_LIMIT);
+  snprintf(tmp, BYTE_LIMIT, "[%d]", p);
+
+  strncat(buf, tmp, BYTE_LIMIT - strlen(buf) - 1);
+
+  p = open("log", O_CREAT | O_WRONLY | O_APPEND, 0644);
+  write(p, (const void *) buf, strlen(buf));
+  write(p, (const void *) newline, 1);
 
   return print_tree || !last_command ? 0 : command_status (last_command);
 }
