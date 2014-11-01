@@ -66,7 +66,7 @@ void set_io(command_t c) {
         }
 }*/
    
-void execute_switch(command_t c); // function prototype
+void execute_switch(command_t c, int profiling); // function prototype
 
 /* TODO:
     * Test
@@ -118,7 +118,7 @@ execute_if_command(command_t c) {
     if(p < 0)
         error(1, errno, "fork failed");
     else if(p == 0) { // child
-        execute_switch(c->u.command[0]);
+        execute_switch(c->u.command[0], -1);
         _exit(c->u.command[0]->status);
     } else { // parent
         waitpid(p, &exit_status, 0);
@@ -127,10 +127,10 @@ execute_if_command(command_t c) {
             error(1, errno, "fork failed");
         else if(p == 0) {
             if(exit_status == 0) { // success
-                execute_switch(c->u.command[1]);
+                execute_switch(c->u.command[1], -1);
                 _exit(c->u.command[1]->status);
             } else if(c->u.command[2] != NULL) {
-                execute_switch(c->u.command[2]);
+                execute_switch(c->u.command[2], -1);
                 _exit(c->u.command[2]->status);
             }
         } else {
@@ -162,7 +162,7 @@ execute_pipe_command(command_t c) {
         if(dup2(buffer[1], 1) < 0) {
             error(1, errno, "dup2 failed for first_pid");
         }
-        execute_switch(c->u.command[0]);
+        execute_switch(c->u.command[0], -1);
         _exit(c->u.command[0]->status);
     }
 
@@ -174,7 +174,7 @@ execute_pipe_command(command_t c) {
         if(dup2(buffer[0], 0) < 0) {
             error(1, errno, "dup2 failed for second_pid");
         }
-        execute_switch(c->u.command[1]);
+        execute_switch(c->u.command[1], -1);
         _exit(c->u.command[1]->status);
     }
     
@@ -198,7 +198,7 @@ execute_sequence_command(command_t c) {
     if(left_pid < 0) {
         error(1, errno, "fork failed");
     } else if(left_pid == 0) {
-        execute_switch(c->u.command[0]);
+        execute_switch(c->u.command[0], -1);
         _exit(c->u.command[0]->status);
     } else {
         waitpid(left_pid, &exit_status, 0);
@@ -208,7 +208,7 @@ execute_sequence_command(command_t c) {
             if(right_pid < 0) {
                 error(1, errno, "fork failed");
              } else if(right_pid == 0) {
-                execute_switch(c->u.command[1]);
+                execute_switch(c->u.command[1], -1);
                 _exit(c->u.command[1]->status);
             } else {
                 waitpid(right_pid, &exit_status, 0);
@@ -253,7 +253,7 @@ execute_subshell_command(command_t c, int profiling) {
             error(1, errno, "second fork failed");
         else if(p == 0) { 
             set_io(c);
-            execute_switch(c->u.command[0]);
+            execute_switch(c->u.command[0], -1);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
@@ -324,7 +324,7 @@ execute_until_command(command_t c) {
         if(p < 0)
             error(1, errno, "fork failed");
         else if(p == 0) {
-            execute_switch(c->u.command[0]);
+            execute_switch(c->u.command[0], -1);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
@@ -333,7 +333,7 @@ execute_until_command(command_t c) {
                 if(p < 0)
                     error(1, errno, "fork failed");
                 else if(p == 0) {
-                    execute_switch(c->u.command[1]);
+                    execute_switch(c->u.command[1], -1);
                     _exit(c->u.command[1]->status);
                 } else {
                     waitpid(p, &exit_status, 0);
@@ -367,7 +367,7 @@ execute_while_command(command_t c) {
         if(p < 0)
             error(1, errno, "fork failed");
         else if(p == 0) {
-            execute_switch(c->u.command[0]);
+            execute_switch(c->u.command[0], -1);
             _exit(c->u.command[0]->status);
         } else {
             waitpid(p, &exit_status, 0);
@@ -376,7 +376,7 @@ execute_while_command(command_t c) {
                 if(p < 0)
                     error(1, errno, "fork failed");
                 else if(p == 0) {
-                    execute_switch(c->u.command[1]);
+                    execute_switch(c->u.command[1], -1);
                     _exit(c->u.command[1]->status);
                 } else {
                     waitpid(p, &exit_status, 0);
