@@ -4,6 +4,8 @@ ls
 
 echo foo
 
+echo wordthatislongerthan8bytes
+
 
 
 # simple command exec

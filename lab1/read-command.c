@@ -871,15 +871,15 @@ void free_command(command_t c) {
 
     //if it’s a simple command, do a while loop freeing the text strings until you reach null
     if (c->type == SIMPLE_COMMAND) {
-        while (c->word[i] != NULL && i < WORD_BUF_SIZE) {
-            free(c->word[i++]);
+        while (c->u.word[i] != NULL && i < WORD_BUF_SIZE) {
+            free(c->u.word[i++]);
         }
     }
     //Else, recursively call on each element of the command array.
     else {
         i = 0;
-        while (c->command[i] != NULL && i < 3) {
-            free(c->command[i++]);
+        while (c->u.command[i] != NULL && i < 3) {
+            free(c->u.command[i++]);
         }
     }
 
