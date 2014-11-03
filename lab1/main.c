@@ -44,6 +44,8 @@ get_next_byte (void *stream)
   return getc (stream);
 }
 
+void free_command(command_t c);
+
 int
 main (int argc, char **argv)
 {
@@ -106,9 +108,12 @@ main (int argc, char **argv)
 	{
 	  printf ("# %d\n", command_number++);
 	  print_command (command);
+    free_command(command);
 	}
       else
 	{
+    if (last_command != NULL)
+      free_command(last_command);
 	  last_command = command;
 	  execute_command (command, profiling);
 	}

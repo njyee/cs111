@@ -514,10 +514,11 @@ make_command_stream (int (*get_next_byte) (void *),
                 
                 } else {
                 
-                // save word in words then reset
-                words[number_of_words] = (char*)malloc(strlen(word)+1);
-                memcpy(words[number_of_words], word, strlen(word)+1);
-                number_of_words++;
+                    // save word in words then reset
+                    // words[number_of_words] = (char*)malloc(strlen(word)+1);
+                    // memcpy(words[number_of_words], word, strlen(word)+1);
+                    // number_of_words++;
+                    words[number_of_words++] = word;
                 }
                 
                 // reset word
@@ -643,7 +644,7 @@ make_command_stream (int (*get_next_byte) (void *),
                     if (r == '<') {
                         if (node->command->input || node->command->output) {
                             //exit (67);
-                            strcpy(error_description, "command already contains an input");
+                            strcpy(error_description, "command already contains an input or output");
                             print_error_message(line_number_ref, error_description);
                         } else
                             node->command->input = words[0];
@@ -829,7 +830,12 @@ make_command_stream (int (*get_next_byte) (void *),
         node = command_stack_pop(&comstack);
         command_stream_push(comstream, *node);
     }
-    
+
+    free(word);
+    free(words);
+    free(special_word);
+    free(error_description);
+
     return comstream;  // We are C hackers
 }
 
@@ -845,4 +851,37 @@ read_command_stream (command_stream_t s)
     // need to handle memory deallocation
     
     return c;
+}
+
+void free_command(command_t c) {
+
+    int i = 0;
+
+    if (c == NULL) {
+        return;
+    }
+
+    //checks if the pointers to input and output need to be freed
+    if (c->input != NULL) {
+        free(c->input);
+    }
+    if (c->output != NULL) {
+        free(c->output);
+    }
+
+    //if it’s a simple command, do a while loop freeing the text strings until you reach null
+    if (c->type == SIMPLE_COMMAND) {
+        while (c->word[i] != NULL && i < WORD_BUF_SIZE) {
+            free(c->word[i++]);
+        }
+    }
+    //Else, recursively call on each element of the command array.
+    else {
+        i = 0;
+        while (c->command[i] != NULL && i < 3) {
+            free(c->command[i++]);
+        }
+    }
+
+    free(c);
 }
