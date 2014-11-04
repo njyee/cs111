@@ -492,7 +492,7 @@ execute_switch(command_t c, int profiling) {
 int
 prepare_profiling (char const *name)
 {
-  return open(name, O_CREAT | O_WRONLY | O_APPEND, 0644);;
+  return open(name, O_CREAT | O_WRONLY | O_APPEND, 0644);
 }
 
 int
