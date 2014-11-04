@@ -436,10 +436,10 @@ make_command_stream (int (*get_next_byte) (void *),
     memset(words, 0, WORD_BUF_SIZE*sizeof(char*)); // init words elements to NULL
     
     // init node (allocate node and command)
-    node = (command_node_t)malloc(sizeof(struct command_node));
+    // node = (command_node_t)malloc(sizeof(struct command_node));
     //node->command = NULL;
     //node->next = NULL;
-    init_node(node);
+    // init_node(node);
     
     for (;;)
     {
@@ -537,6 +537,8 @@ make_command_stream (int (*get_next_byte) (void *),
                 if (words[0] != NULL && c != ' ' && c != '\t') // then simple command
                 {
                     follows = COMMAND;
+                    node = (command_node_t)malloc(sizeof(struct command_node));
+                    init_node(node);
                     node->command->type = SIMPLE_COMMAND;
                     node->command->status = EXECUTION_STATUS;
                     node->command->input = NULL;
@@ -545,7 +547,8 @@ make_command_stream (int (*get_next_byte) (void *),
                     command_stack_push(&comstack, *node);
                     
                     // reset
-                    init_node(node);
+                    // init_node(node);
+                    free(node);
                     words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)); // No good solution yet.
                     // words[0] = NULL;  //used to check if words is empty in future if statements
                     memset(words, 0, WORD_BUF_SIZE*sizeof(char*));
@@ -656,8 +659,9 @@ make_command_stream (int (*get_next_byte) (void *),
                         } else
                             node->command->output = words[0];
                     }
-                    node = (struct command_node *) malloc(sizeof(struct command_node));
-                    init_node(node);
+                    // node = (struct command_node *) malloc(sizeof(struct command_node));
+                    // init_node(node);
+                    node = NULL;
                     // words = (char**)malloc(WORD_BUF_SIZE*sizeof(char*)+1); // No good solution yet. 
                     words[0] = NULL;
                     number_of_words = 0;
@@ -829,6 +833,7 @@ make_command_stream (int (*get_next_byte) (void *),
     while (!command_stack_empty(&comstack)) {
         node = command_stack_pop(&comstack);
         command_stream_push(comstream, *node);
+        free(node);
     }
 
     free(word);
@@ -843,9 +848,12 @@ command_t
 read_command_stream (command_stream_t s)
 {
     command_t c = NULL;
+    command_node_t free_me = NULL;
     if (s->head != NULL) {
         c = s->head->command;
+        free_me = s->head;
         s->head = s->head->next;
+        free(free_me);
     }
     
     // need to handle memory deallocation
