@@ -64,7 +64,10 @@ typedef struct osprd_info {
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
-
+	
+	// add writeLockingPids (list of pids that want write lock)
+	// add readLockingPids	(list of pids that want read lock) lock of have?
+	
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -190,7 +193,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
-	int my_ticket; // correct?
+	unsigned my_ticket; // correct?
 
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
@@ -244,12 +247,12 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 // TODO: Finish code below:
 /*
 		if(filp_writeable) {
-			osprd_spin_lock(&(d->mutex));
+			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
 			d->ticket_head++;
-			osprd_spin_unlock(&(d->mutex));
+			osp_spin_unlock(&(d->mutex));
 
-			if(wait_event_interruptable(d->blockq,
+			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->writeLockingPids == NULL
 						&& d->readLockingPids == NULL))) {
@@ -258,7 +261,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			return -1; // not done yet	
 			}
 		}
-		osprd_spin_lock(&(d->mutex));
+		osp_spin_lock(&(d->mutex));
 		filp->f_flags |= F_OSPRD_LOCKED;
 		//won't work yet
 		addToList(&(d->writeLockingPids | current->pid));
@@ -266,7 +269,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		grantTicketToNextAliveProcess(); // not created yet
 		// TODO: don't forget to advacne ticket tail
 		osp_spin_unlock(&(d->mutex));
-		wake_up_all(...);
+		wake_up_all(&(d->blockq));
 
 */
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
@@ -309,6 +312,8 @@ static void osprd_setup(osprd_info_t *d)
 	osp_spin_lock_init(&d->mutex);
 	d->ticket_head = d->ticket_tail = 0;
 	/* Add code here if you add fields to osprd_info_t. */
+	// add writeLockingPids
+	// add readLockingPids
 }
 
 
