@@ -305,30 +305,33 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		d->ticket_head++;
 		osp_spin_unlock(&(d->mutex));
 
-		if(filp_writeable) {
+		if(filp_writable) {
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids->head == NULL
 						&& d->read_locking_pids->head == NULL))) {
 				// need to maintain invalid ticket list
-				r = -ENOTTY; // not done yet
+				return -ENOTTY; // not done yet
 			}
 			osp_spin_lock(&(d->mutex));
 			filp->f_flags |= F_OSPRD_LOCKED;
-			// addToList(&(d->writeLockingPids | current->pid));
 			push_back_locking_pid(&(d->write_locking_pids), current->pid);
-			//won't work yet
 			grantTicketToNextAliveProcess(); // not created yet
-			// TODO: don't forget to advacne ticket tail
 			osp_spin_unlock(&(d->mutex));
-			// wake_up_all(&(d->blockq));  // why did Tuan put this
+			// wake_up_all(&(d->blockq));  // do we need this?
 		} else { // readable
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids->head == NULL))) {
-				r = -ENOTTY;
+				return -ENOTTY;
 			}
+			osp_spin_lock(&(d->mutex));
+			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->read_locking_pids), current->pid);
+			// grantTicketToNextAliveProcess(); // not created yet
+			d->ticket_tail++;
+			osp_spin_unlock(&(d->mutex));
+			wake_up_all(&(d->blockq));
 		}
 
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
@@ -354,7 +357,17 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		r = -ENOTTY;
+		// r = -ENOTTY;
+
+		if(!(filp->f_flags & F_OSPRD_LOCKED))
+			return -EINVAL;
+		filp->f_flags &= ~F_OSPRD_LOCKED;
+		if (filp_writable)
+			remove_locking_pid(&(d->write_locking_pids), current->pid);
+		else
+			remove_locking_pid(&(d->read_locking_pids), current->pid);
+		wake_up_all(&(d->blockq));
+		return 0;
 
 	} else
 		r = -ENOTTY; /* unknown command */
@@ -371,8 +384,10 @@ static void osprd_setup(osprd_info_t *d)
 	osp_spin_lock_init(&d->mutex);
 	d->ticket_head = d->ticket_tail = 0;
 	/* Add code here if you add fields to osprd_info_t. */
-	// add writeLockingPids
-	// add readLockingPids
+	// init write_locking_pids
+	d->write_locking_pids->head = NULL;
+	d->read_locking_pids->head  = NULL;
+	// init read_locking_pids
 }
 
 
