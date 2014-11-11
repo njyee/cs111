@@ -44,6 +44,56 @@ MODULE_AUTHOR("Nicholas Yee & Thomas Lutton");
 static int nsectors = 32;
 module_param(nsectors, int, 0);
 
+struct pid_node {
+	int value;
+	struct pid_node* next;	
+};
+
+struct locking_pids {
+	struct pid_node* head;
+};
+
+void push_back_locking_pid (struct locking_pids* list, struct pid_node* p) {
+	if(list->head == NULL){
+		list->head = (struct pid_node*)kmalloc(sizeof(struct pid_node), GPF_ATOMIC);
+	    list->head->value = pid_node->value;
+	    list->head->next = NULL;
+	} else {
+	    struct pid_node* temp = list->head;
+	    while(temp->next != NULL)
+	        temp = temp->next;
+	    temp->next = (struct pid_node*)kmalloc(sizeof(struct pid_node), GPF_ATOMIC);
+	    temp->next->value = p->value;
+	    temp->next->next = NULL;
+	}
+}
+
+struct pid_node*
+remove_locking_pid(struct locking_pids* list, struct pid_node* p) {
+    if(list->head == NULL)
+        return NULL; // list empty, p not found
+    else {
+        struct pid_node* temp = list->head;
+        if(temp == p) {
+            // p == head
+            // remove the head and relink list
+            struct pid_node* retval = temp;
+            list->head = temp->next;
+        } else {
+            // p != head
+            // find p (if it is in list) and relink list
+            while(temp->next != NULL) {
+                if(temp->next == p) {
+                    // found p
+                    struct pid_node* retval = temp->next;
+                    temp->next = temp->next->next;
+                    return retval;
+                }
+            }
+            return NULL; // p not found in list
+        }
+    }
+}
 
 /* The internal representation of our device. */
 typedef struct osprd_info {
@@ -65,9 +115,14 @@ typedef struct osprd_info {
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
 	
-	// add writeLockingPids (list of pids that want write lock)
-	// add readLockingPids	(list of pids that want read lock) lock of have?
-	
+	// add writeLockingPids (list of pids that have write lock)
+	struct locking_pids write_locking_pids;
+
+	// add readLockingPids	(list of pids that have read lock)
+	struct locking_pids read_locking_pids;
+
+	/* if multiple hold a lock (i.e. size > 1), error?*/
+
 	// The following elements are used internally; you don't need
 	// to understand them.
 	struct request_queue *queue;    // The device request queue.
@@ -245,33 +300,38 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		r = -ENOTTY;
 
 // TODO: Finish code below:
-/*
-		if(filp_writeable) {
-			osp_spin_lock(&(d->mutex));
-			my_ticket = d->ticket_head;
-			d->ticket_head++;
-			osp_spin_unlock(&(d->mutex));
 
+		osp_spin_lock(&(d->mutex));
+		my_ticket = d->ticket_head;
+		d->ticket_head++;
+		osp_spin_unlock(&(d->mutex));
+
+		if(filp_writeable) {
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
-						&& d->writeLockingPids == NULL
-						&& d->readLockingPids == NULL))) {
-			// need to create the writeLockingPids and readLockingPids
+						&& d->write_locking_pids->head == NULL
+						&& d->read_locking_pids->head == NULL))) {
 			// need to maintain invalid ticket list
-			return -1; // not done yet	
+			r = -ENOTTY; // not done yet
+			}
+		} else { // readable
+			if(wait_event_interruptible(d->blockq,
+						(d->ticket_tail == my_ticket
+						&& d->write_locking_pids->head == NULL)) {
+			// need to maintain invalid ticket list
+			r = -ENOTTY; // not done yet
 			}
 		}
-		osp_spin_lock(&(d->mutex));
-		filp->f_flags |= F_OSPRD_LOCKED;
-		//won't work yet
-		addToList(&(d->writeLockingPids | current->pid));
-		//won't work yet
-		grantTicketToNextAliveProcess(); // not created yet
-		// TODO: don't forget to advacne ticket tail
-		osp_spin_unlock(&(d->mutex));
-		wake_up_all(&(d->blockq));
+		// osp_spin_lock(&(d->mutex));
+		// filp->f_flags |= F_OSPRD_LOCKED;
+		// //won't work yet
+		// addToList(&(d->writeLockingPids | current->pid));
+		// //won't work yet
+		// grantTicketToNextAliveProcess(); // not created yet
+		// // TODO: don't forget to advacne ticket tail
+		// osp_spin_unlock(&(d->mutex));
+		// wake_up_all(&(d->blockq));
 
-*/
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
 		// EXERCISE: ATTEMPT to lock the ramdisk.
