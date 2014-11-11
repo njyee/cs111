@@ -53,44 +53,43 @@ struct locking_pids {
 	struct pid_node* head;
 };
 
-void push_back_locking_pid (struct locking_pids* list, struct pid_node* p) {
+void push_back_locking_pid (struct locking_pids* list, int pid) {
 	if(list->head == NULL){
 		list->head = (struct pid_node*)kmalloc(sizeof(struct pid_node), GPF_ATOMIC);
-	    list->head->value = pid_node->value;
+	    list->head->value = pid;
 	    list->head->next = NULL;
 	} else {
 	    struct pid_node* temp = list->head;
 	    while(temp->next != NULL)
 	        temp = temp->next;
 	    temp->next = (struct pid_node*)kmalloc(sizeof(struct pid_node), GPF_ATOMIC);
-	    temp->next->value = p->value;
+	    temp->next->value = pid;
 	    temp->next->next = NULL;
 	}
 }
 
-struct pid_node*
-remove_locking_pid(struct locking_pids* list, struct pid_node* p) {
+int
+remove_locking_pid(struct locking_pids* list, int pid) {
     if(list->head == NULL)
-        return NULL; // list empty, p not found
+        return -1; // list empty, pid not found
     else {
-        struct pid_node* temp = list->head;
-        if(temp == p) {
-            // p == head
+        if(list->head->value == p) {
+            // pid == head->value
             // remove the head and relink list
-            struct pid_node* retval = temp;
-            list->head = temp->next;
+            list->head = list->head->next;
+            return 0;
         } else {
             // p != head
             // find p (if it is in list) and relink list
+            struct pid_node* temp = list->head;
             while(temp->next != NULL) {
-                if(temp->next == p) {
-                    // found p
-                    struct pid_node* retval = temp->next;
+                if(temp->next->value == pid) {
+                    // found pid
                     temp->next = temp->next->next;
-                    return retval;
+                    return 0;
                 }
             }
-            return NULL; // p not found in list
+            return -1; // pid not found in list
         }
     }
 }
@@ -311,26 +310,26 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids->head == NULL
 						&& d->read_locking_pids->head == NULL))) {
-			// need to maintain invalid ticket list
-			r = -ENOTTY; // not done yet
+				// need to maintain invalid ticket list
+				r = -ENOTTY; // not done yet
 			}
+			osp_spin_lock(&(d->mutex));
+			filp->f_flags |= F_OSPRD_LOCKED;
+			// addToList(&(d->writeLockingPids | current->pid));
+			push_back_locking_pid(&(d->write_locking_pids), current->pid);
+			//won't work yet
+			grantTicketToNextAliveProcess(); // not created yet
+			// TODO: don't forget to advacne ticket tail
+			osp_spin_unlock(&(d->mutex));
+			// wake_up_all(&(d->blockq));  // why did Tuan put this
 		} else { // readable
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
-						&& d->write_locking_pids->head == NULL)) {
-			// need to maintain invalid ticket list
-			r = -ENOTTY; // not done yet
+						&& d->write_locking_pids->head == NULL))) {
+				r = -ENOTTY;
 			}
+			push_back_locking_pid(&(d->read_locking_pids), current->pid);
 		}
-		// osp_spin_lock(&(d->mutex));
-		// filp->f_flags |= F_OSPRD_LOCKED;
-		// //won't work yet
-		// addToList(&(d->writeLockingPids | current->pid));
-		// //won't work yet
-		// grantTicketToNextAliveProcess(); // not created yet
-		// // TODO: don't forget to advacne ticket tail
-		// osp_spin_unlock(&(d->mutex));
-		// wake_up_all(&(d->blockq));
 
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
