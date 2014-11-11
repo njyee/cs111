@@ -190,6 +190,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
+	int my_ticket; // correct?
 
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
@@ -240,6 +241,34 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		eprintk("Attempting to acquire\n");
 		r = -ENOTTY;
 
+// TODO: Finish code below:
+/*
+		if(filp_writeable) {
+			osprd_spin_lock(&(d->mutex));
+			my_ticket = d->ticket_head;
+			d->ticket_head++;
+			osprd_spin_unlock(&(d->mutex));
+
+			if(wait_event_interruptable(d->blockq,
+						(d->ticket_tail == my_ticket
+						&& d->writeLockingPids == NULL
+						&& d->readLockingPids == NULL))) {
+			// need to create the writeLockingPids and readLockingPids
+			// need to maintain invalid ticket list
+			return -1; // not done yet	
+			}
+		}
+		osprd_spin_lock(&(d->mutex));
+		filp->f_flags |= F_OSPRD_LOCKED;
+		//won't work yet
+		addToList(&(d->writeLockingPids | current->pid));
+		//won't work yet
+		grantTicketToNextAliveProcess(); // not created yet
+		// TODO: don't forget to advacne ticket tail
+		osp_spin_unlock(&(d->mutex));
+		wake_up_all(...);
+
+*/
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
 		// EXERCISE: ATTEMPT to lock the ramdisk.
