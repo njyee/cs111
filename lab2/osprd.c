@@ -125,18 +125,18 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 
 	// Your code here.
 	requestType = rq_data_dir(req);
-	*dataPtr = d->data + (req->sector)*SECTOR_SIZE;
+	dataPtr = d->data + (req->sector) * SECTOR_SIZE;
 	if(requestType == READ) {
 		memcpy((void*)req->buffer,
 			(void*)dataPtr,
-			req->current_nr_sectors * SECTOR_SIZE);
+			(req->current_nr_sectors) * SECTOR_SIZE);
 	}
 	else if(requestType == WRITE) {
 		memcpy((void*)dataPtr, 
 			(void*)req->buffer,
-			req->current_nr_sectors * SECTOR_SIZE);
+			(req->current_nr_sectors) * SECTOR_SIZE);
 	}
-	//eprintk("Should process request...\n");
+	eprintk("Should process request...\n");
 
 	end_request(req, 1);
 }
