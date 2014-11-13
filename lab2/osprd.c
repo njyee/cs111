@@ -257,15 +257,31 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 {
 	if (filp) {
 		osprd_info_t *d = file2osprd(filp);
-		int filp_writable = filp->f_mode & FMODE_WRITE;
+		//int filp_writable = filp->f_mode & FMODE_WRITE;
 
 		// EXERCISE: If the user closes a ramdisk file that holds
 		// a lock, release the lock.  Also wake up blocked processes
 		// as appropriate.
-
-		// Your code here.
 		
-
+		osp_spin_lock(&(d->mutex));
+		
+		if(!pid_in_list(&(d->write_locking_pids), current->pid)
+				&& !pid_in_list(&(d->read_locking_pids), current->pid)) {
+			osp_spin_unlock(&(d->mutex));
+			return -EINVAL;
+		}
+		
+		// remove pid from appropriate locking_pids lists
+		remove_locking_pid(&(d->write_locking_pids), current->pid);
+		remove_locking_pid(&(d->read_locking_pids), current->pid);
+	
+		// clear the lock
+		if(d->read_locking_pids.head == NULL && d->write_locking_pids.head == NULL)	
+			filp->f_flags &= ~F_OSPRD_LOCKED;
+	
+		osp_spin_unlock(&(d->mutex));
+		wake_up_all(&(d->blockq));
+		
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
 
@@ -438,7 +454,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		//	return -EINVAL;
 		
 		if(!pid_in_list(&(d->write_locking_pids), current->pid)
-			&& !pid_in_list(&(d->write_locking_pids), current->pid)) {
+			&& !pid_in_list(&(d->read_locking_pids), current->pid)) {
 			osp_spin_unlock(&(d->mutex));
 			return -EINVAL;
 		}		
@@ -448,7 +464,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		else
 			remove_locking_pid(&(d->read_locking_pids), current->pid);
 		
-		if(d->read_locking_pids.head == NULL && d->write_locking_pids.head == NULL)	
+		if(d->read_locking_pids.head == NULL && d->write_locking_pids.head == NULL)
 			filp->f_flags &= ~F_OSPRD_LOCKED;
 		
 		osp_spin_unlock(&(d->mutex));
