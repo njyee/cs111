@@ -437,7 +437,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
-			d->ticket_head++;
 			
 	//		if(pid_in_list(&(d->read_locking_pids), current->pid) ||
 	//			pid_in_list(&(d->write_locking_pids), current->pid)) {
@@ -455,6 +454,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			}
 			osp_spin_lock(&(d->mutex));
 			// grant the lock
+			
+			d->ticket_head++;
+
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->write_locking_pids), current->pid);
 			//grant_ticket_to_next_alive_process(d); // not created yet
@@ -467,7 +469,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
-			d->ticket_head++;
 			osp_spin_unlock(&(d->mutex));
 
 			if(!(d->ticket_tail == my_ticket
@@ -476,7 +477,9 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			}
 			
 			osp_spin_lock(&(d->mutex));
-			
+
+			d->ticket_head++;			
+
 			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->read_locking_pids), current->pid);
