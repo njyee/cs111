@@ -205,7 +205,7 @@ grant_ticket_to_next_alive_process(osprd_info_t *d) {
 	// do {
 	// 	d->ticket_tail++;
 	// } while (ticket_in_list(d->ticket_tail))
-	while (ticket_in_list(++d->ticket_tail)) {}
+	while (ticket_in_list(&(d->invalid_ticket_list), ++d->ticket_tail)) {}
 }
 
 #define NOSPRD 4
@@ -421,7 +421,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				if (d->ticket_tail == my_ticket)
 					grant_ticket_to_next_alive_process(d);
 				else
-					push_back_ticket(my_ticket);
+					push_back_ticket(&(d->invalid_ticket_list), my_ticket);
 				return -ERESTARTSYS; // not done yet
 			}
 			osp_spin_lock(&(d->mutex));
@@ -447,7 +447,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 				if (d->ticket_tail == my_ticket)
 					grant_ticket_to_next_alive_process(d);
 				else
-					push_back_ticket(my_ticket);
+					push_back_ticket(&(d->invalid_ticket_list), my_ticket);
 				return -ERESTARTSYS;
 			}
 			
