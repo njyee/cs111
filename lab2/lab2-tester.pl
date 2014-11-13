@@ -187,13 +187,13 @@ close FOO;
       '(echo test2 | ./osprdaccess -w -l -d 0.1 /dev/osprdb /dev/osprdc ) & ' .
       '(echo test3 | ./osprdaccess -w -l -d 0.1 /dev/osprdc /dev/osprda ) & ' ,
       "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
-    ]
+    ],
     
     #21 Deadlock: write lock same ramdisk twice
     [
       'echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda' ,
       "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
-    ]
+    ],
     
     );
 
