@@ -68,6 +68,7 @@ void push_back_locking_pid (struct locking_pids* list, int pid) {
 	}
 }
 
+
 /* remove a lock holding pid from the appropriate list  */
 void
 remove_locking_pid(struct locking_pids* list, int pid) {
@@ -116,6 +117,15 @@ pid_in_list(struct locking_pids* list, int pid) {
 	return 0;
 }
 
+struct ticket_node {
+	unsigned value;
+	struct ticket_node* next;
+};
+
+struct ticket_list {
+	struct ticket_node* head;
+};
+
 /* The internal representation of our device. */
 typedef struct osprd_info {
 	uint8_t *data;                  // The data array. Its size is
@@ -136,11 +146,14 @@ typedef struct osprd_info {
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
 	
-	// add writeLockingPids (list of pids that have write lock)
+	// list of pids that have write lock
 	struct locking_pids write_locking_pids;
 
-	// add readLockingPids	(list of pids that have read lock)
+	// list of pids that have read lock
 	struct locking_pids read_locking_pids;
+
+	// list of invalid tickets
+	struct ticket_list invalid_ticket_list;
 
 	/* if multiple hold a lock (i.e. size > 1), error?*/
 
@@ -153,23 +166,48 @@ typedef struct osprd_info {
 } osprd_info_t;
 
 /* return 1 if ticket in list, otherwise 0 */
-/*
 int
 ticket_in_list(struct ticket_list* list, unsigned t) {
 	if(list == NULL)
 		return 0;
+	else {
+		struct ticket_node *temp = list->head;
+		while(temp != NULL) {
+			if(temp->value == t)
+				return 1;
+			temp = temp->next;
+		}
+	}
+	return 0;
 }
-*/
 
-/* Grant ticket to next alive process in order*/
-/*
-void
-grant_ticket_to_next_alive_process(osprd_info_t *d) {
-	while(++(d->ticket_tail)) {
-		
+/* push back ticket to invalid ticket list */
+void 
+push_back_ticket (struct ticket_list *list, unsigned t) {
+	if(list->head == NULL){
+		list->head = (struct ticket_node*)kzalloc(sizeof(struct ticket_node), GFP_ATOMIC);
+	    list->head->value = t;
+	    list->head->next = NULL;
+	} else {
+	    struct ticket_node* temp = list->head;
+	    while(temp->next != NULL)
+	        temp = temp->next;
+	    temp->next = (struct ticket_node*)kzalloc(sizeof(struct ticket_node), GFP_ATOMIC);
+	    temp->next->value = t;
+	    temp->next->next = NULL;
 	}
 }
-*/
+
+
+/* Grant ticket to next alive process in order*/
+void
+grant_ticket_to_next_alive_process(osprd_info_t *d) {
+	// do {
+	// 	d->ticket_tail++;
+	// } while (ticket_in_list(d->ticket_tail))
+	while (ticket_in_list(++d->ticket_tail)) {}
+}
+
 #define NOSPRD 4
 static osprd_info_t osprds[NOSPRD];
 
@@ -380,14 +418,18 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 						&& d->write_locking_pids.head == NULL
 						&& d->read_locking_pids.head == NULL))) {
 				// need to maintain invalid ticket list
+				if (d->ticket_tail == my_ticket)
+					grant_ticket_to_next_alive_process(d);
+				else
+					push_back_ticket(my_ticket);
 				return -ERESTARTSYS; // not done yet
 			}
 			osp_spin_lock(&(d->mutex));
 			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->write_locking_pids), current->pid);
-			//grant_ticket_to_next_alive_process(d); // not created yet
-			d->ticket_tail++; // granting ticket
+			grant_ticket_to_next_alive_process(d); // not created yet
+			// d->ticket_tail++; // granting ticket
 			osp_spin_unlock(&(d->mutex));
 			
 			wake_up_all(&(d->blockq));  // do we need this?
@@ -402,6 +444,10 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids.head == NULL))) {
+				if (d->ticket_tail == my_ticket)
+					grant_ticket_to_next_alive_process(d);
+				else
+					push_back_ticket(my_ticket);
 				return -ERESTARTSYS;
 			}
 			
@@ -410,8 +456,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->read_locking_pids), current->pid);
-			// grant_ticket_to_next_alive_process(d); // TODO
-			d->ticket_tail++;
+			grant_ticket_to_next_alive_process(d); // TODO
+			// d->ticket_tail++;
 			osp_spin_unlock(&(d->mutex));
 			
 			wake_up_all(&(d->blockq));
@@ -459,8 +505,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->write_locking_pids), current->pid);
-			//grant_ticket_to_next_alive_process(d); // not created yet
-			d->ticket_tail++; // granting ticket
+			grant_ticket_to_next_alive_process(d); // not created yet
+			// d->ticket_tail++; // granting ticket
 			osp_spin_unlock(&(d->mutex));
 			
 			wake_up_all(&(d->blockq));  // do we need this?
@@ -483,8 +529,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->read_locking_pids), current->pid);
-			// grant_ticket_to_next_alive_process(d); // TODO
-			d->ticket_tail++;
+			grant_ticket_to_next_alive_process(d); // TODO
+			// d->ticket_tail++;
 			osp_spin_unlock(&(d->mutex));
 			
 			wake_up_all(&(d->blockq));
