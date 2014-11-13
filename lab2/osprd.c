@@ -85,7 +85,9 @@ remove_locking_pid(struct locking_pids* list, int pid) {
             while(temp->next != NULL) {
                 if(temp->next->value == pid) {
                     // found pid
+                    struct pid_node* free_this = temp->next;
                     temp->next = temp->next->next;
+                    kfree(free_this);
                     return 0;
                 }
             }
@@ -129,6 +131,21 @@ typedef struct osprd_info {
 	                                //   exclusion in the 'queue'.
 	struct gendisk *gd;             // The generic disk.
 } osprd_info_t;
+
+/* return 1 if ticket in list, otherwise 0 */
+int
+ticket_in_list(struct ticket_list* list, unsigned t) {
+	if(list == NULL)
+		return 0;
+}
+
+/* Grant ticket to next alive process in order*/
+void
+grant_ticket_to_next_alive_process(osprd_info_t *d) {
+	while(++(d->ticket_tail)) {
+		
+	}
+}
 
 #define NOSPRD 4
 static osprd_info_t osprds[NOSPRD];
@@ -247,7 +264,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
-	unsigned my_ticket; // correct?
+	//unsigned my_ticket; // correct?
 
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
@@ -295,8 +312,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to acquire\n");
-		r = -ENOTTY;
+		
+		unsigned my_ticket;
+		
+		//eprintk("Attempting to acquire\n");
+		//r = -ENOTTY;
 
 // TODO: Finish code below:
 
@@ -306,33 +326,45 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		osp_spin_unlock(&(d->mutex));
 
 		if(filp_writable) {
+			
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids.head == NULL
 						&& d->read_locking_pids.head == NULL))) {
 				// need to maintain invalid ticket list
-				return -ENOTTY; // not done yet
+				return -ERESTARTSYS; // not done yet
 			}
+			
 			osp_spin_lock(&(d->mutex));
+			
+			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->write_locking_pids), current->pid);
-			//grantTicketToNextAliveProcess(); // not created yet
+			//grant_ticket_to_next_alive_process(d); // not created yet
+			d->ticket_tail++; // granting ticket
+			
 			osp_spin_unlock(&(d->mutex));
 			// wake_up_all(&(d->blockq));  // do we need this?
 		} else { // readable
+		
 			if(wait_event_interruptible(d->blockq,
 						(d->ticket_tail == my_ticket
 						&& d->write_locking_pids.head == NULL))) {
-				return -ENOTTY;
+				return -ERESTARTSYS;
 			}
+			
 			osp_spin_lock(&(d->mutex));
+			
+			// grant the lock
 			filp->f_flags |= F_OSPRD_LOCKED;
 			push_back_locking_pid(&(d->read_locking_pids), current->pid);
-			// grantTicketToNextAliveProcess(); // not created yet
+			// grant_ticket_to_next_alive_process(d); // TODO
 			d->ticket_tail++;
 			osp_spin_unlock(&(d->mutex));
+			
 			wake_up_all(&(d->blockq));
 		}
+		return 0;
 
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
@@ -359,16 +391,23 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next line).
 		// r = -ENOTTY;
 
+		osp_spin_lock(&(d->mutex));
+
 		if(!(filp->f_flags & F_OSPRD_LOCKED))
 			return -EINVAL;
-		filp->f_flags &= ~F_OSPRD_LOCKED;
+
 		if (filp_writable)
 			remove_locking_pid(&(d->write_locking_pids), current->pid);
 		else
 			remove_locking_pid(&(d->read_locking_pids), current->pid);
+		
+		if(d->read_locking_pids.head == NULL && d->write_locking_pids.head == NULL)	
+			filp->f_flags &= ~F_OSPRD_LOCKED;
+		
+		osp_spin_unlock(&(d->mutex));
 		wake_up_all(&(d->blockq));
+		
 		return 0;
-
 	} else
 		r = -ENOTTY; /* unknown command */
 	return r;
