@@ -591,6 +591,7 @@ static void osprd_setup(osprd_info_t *d)
 	// init write_locking_pids
 	d->write_locking_pids.head = NULL;
 	d->read_locking_pids.head  = NULL;
+	d->invalid_ticket_list.head = NULL;
 	// init read_locking_pids
 }
 
