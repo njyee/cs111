@@ -281,10 +281,6 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 	
 		osp_spin_unlock(&(d->mutex));
 		wake_up_all(&(d->blockq));
-		
-		// This line avoids compiler warnings; you may remove it.
-		(void) filp_writable, (void) d;
-
 	}
 
 	return 0;
@@ -434,7 +430,64 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 		// Your code here (instead of the next two lines).
 		//eprintk("Attempting to try acquire\n");
-		r = -ENOTTY;
+		
+		unsigned my_ticket;
+		
+		if(filp_writable) {
+
+			osp_spin_lock(&(d->mutex));
+			my_ticket = d->ticket_head;
+			d->ticket_head++;
+			
+	//		if(pid_in_list(&(d->read_locking_pids), current->pid) ||
+	//			pid_in_list(&(d->write_locking_pids), current->pid)) {
+	//			osp_spin_unlock(&(d->mutex));
+	//			return -EDEADLK;
+	//		}
+
+			osp_spin_unlock(&(d->mutex));	
+
+			if(!(d->ticket_tail == my_ticket
+				&& d->write_locking_pids.head == NULL
+				&& d->read_locking_pids.head == NULL)) {
+				// need to maintain invalid ticket list
+				return -EBUSY; // not done yet
+			}
+			osp_spin_lock(&(d->mutex));
+			// grant the lock
+			filp->f_flags |= F_OSPRD_LOCKED;
+			push_back_locking_pid(&(d->write_locking_pids), current->pid);
+			//grant_ticket_to_next_alive_process(d); // not created yet
+			d->ticket_tail++; // granting ticket
+			osp_spin_unlock(&(d->mutex));
+			
+			wake_up_all(&(d->blockq));  // do we need this?
+			return 0;
+		} else { // readable
+
+			osp_spin_lock(&(d->mutex));
+			my_ticket = d->ticket_head;
+			d->ticket_head++;
+			osp_spin_unlock(&(d->mutex));
+
+			if(!(d->ticket_tail == my_ticket
+				&& d->write_locking_pids.head == NULL)) {
+				return -EBUSY;
+			}
+			
+			osp_spin_lock(&(d->mutex));
+			
+			// grant the lock
+			filp->f_flags |= F_OSPRD_LOCKED;
+			push_back_locking_pid(&(d->read_locking_pids), current->pid);
+			// grant_ticket_to_next_alive_process(d); // TODO
+			d->ticket_tail++;
+			osp_spin_unlock(&(d->mutex));
+			
+			wake_up_all(&(d->blockq));
+			return 0;
+		}
+		return -ENOTTY;
 
 	} else if (cmd == OSPRDIOCRELEASE) {
 
