@@ -405,11 +405,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			my_ticket = d->ticket_head;
 			d->ticket_head++;
 			
-	//		if(pid_in_list(&(d->read_locking_pids), current->pid) ||
-	//			pid_in_list(&(d->write_locking_pids), current->pid)) {
-	//			osp_spin_unlock(&(d->mutex));
-	//			return -EDEADLK;
-	//		}
+			if(pid_in_list(&(d->read_locking_pids), current->pid) ||
+				pid_in_list(&(d->write_locking_pids), current->pid)) {
+				osp_spin_unlock(&(d->mutex));
+				return -EDEADLK;
+			}
 
 			osp_spin_unlock(&(d->mutex));	
 
@@ -439,6 +439,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
 			d->ticket_head++;
+			
+			if(pid_in_list(&(d->read_locking_pids), current->pid) ||
+				pid_in_list(&(d->write_locking_pids), current->pid)) {
+				osp_spin_unlock(&(d->mutex));
+				return -EDEADLK;
+			}
+			
 			osp_spin_unlock(&(d->mutex));
 
 			if(wait_event_interruptible(d->blockq,
@@ -484,11 +491,11 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
 			
-	//		if(pid_in_list(&(d->read_locking_pids), current->pid) ||
-	//			pid_in_list(&(d->write_locking_pids), current->pid)) {
-	//			osp_spin_unlock(&(d->mutex));
-	//			return -EDEADLK;
-	//		}
+			if(pid_in_list(&(d->read_locking_pids), current->pid) ||
+				pid_in_list(&(d->write_locking_pids), current->pid)) {
+				osp_spin_unlock(&(d->mutex));
+				return -EBUSY;
+			}
 
 			osp_spin_unlock(&(d->mutex));	
 
@@ -515,6 +522,13 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
 			osp_spin_lock(&(d->mutex));
 			my_ticket = d->ticket_head;
+			
+			if(pid_in_list(&(d->read_locking_pids), current->pid) ||
+				pid_in_list(&(d->write_locking_pids), current->pid)) {
+				osp_spin_unlock(&(d->mutex));
+				return -EBUSY;
+			}
+			
 			osp_spin_unlock(&(d->mutex));
 
 			if(!(d->ticket_tail == my_ticket

@@ -166,6 +166,35 @@ close FOO;
       ') 2>/dev/null',
       "aX"
     ],
+    
+    #18 A simple deadlock
+    [
+      'echo ababab | ./osprdaccess -w -l /dev/osprda /dev/osprda ' .
+      './osprdaccess -r /dev/osprda',
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
+    ],
+
+    #19 A slightly more complex deadlock
+    [
+      'echo test1 | ./osprdaccess -w -l -d 0.1 /dev/osprda /dev/osprdb & ' .
+      'echo test2 | ./osprdaccess -w -l -d 0.1 /dev/osprdb /dev/osprda ',
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
+    ],
+
+    #20 A more elaborate deadlock
+    [
+      '(echo test1 | ./osprdaccess -w -l -d 0.1 /dev/osprda /dev/osprdb ) & ' .
+      '(echo test2 | ./osprdaccess -w -l -d 0.1 /dev/osprdb /dev/osprdc ) & ' .
+      '(echo test3 | ./osprdaccess -w -l -d 0.1 /dev/osprdc /dev/osprda ) & ' ,
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
+    ]
+    
+    #21 Deadlock: write lock same ramdisk twice
+    [
+      'echo foo | ./osprdaccess -w -l /dev/osprda /dev/osprda' ,
+      "ioctl OSPRDIOCACQUIRE: Resource deadlock avoided"
+    ]
+    
     );
 
 my($ntest) = 0;
