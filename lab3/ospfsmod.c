@@ -14,6 +14,7 @@
 #include <asm/uaccess.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/string.h>
 
 /****************************************************************************
  * ospfsmod
@@ -452,8 +453,12 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
+		//r = 1;		/* Fix me! */
+		//break;		/* Fix me! */
+		if (f_pos * OSPFS_DIRENTRY_SIZE == dir_oi->oi_size) {
+			r = 1;
+			break;
+		}
 
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
@@ -476,6 +481,29 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
+
+		// Get pointer to next directory entry
+		od = ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);
+
+		if (od->od_ino != 0) {  // Ignore blank entries
+
+			// Get pointer to entry's inode
+			entry_oi = ospfs_inode(od->od_ino);
+
+			// Fill directory entry
+			ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino,
+				entry_oi->oi_ftype == OSPFS_FTYPE_REG ? DT_REG :
+				entry_oi->oi_ftype == OSPFS_FTYPE_DIR ? DT_DIR : DT_LNK);
+
+			// Return 0 if filldir returns < 0
+			if (ok_so_far < 0) {
+				r = 0;
+				break;
+			}
+		}
+
+		// Advance f_pos
+		f_pos++;
 	}
 
 	// Save the file position and return!
