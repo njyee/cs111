@@ -660,7 +660,11 @@ static int32_t
 indir2_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return -1;
+	return 0;
 }
 
 
@@ -679,7 +683,13 @@ static int32_t
 indir_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT)
+		return -1;
+	if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
+	return (b - OSPFS_NDIRECT) / OSPFS_NINDIRECT;
 }
 
 
@@ -696,7 +706,11 @@ static int32_t
 direct_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT)
+		return b;
+	return (b - OSPFS_NDIRECT) % OSPFS_NINDIRECT;
 }
 
 
@@ -741,7 +755,34 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *allocated[2] = { 0, 0 };
 
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	//return -EIO; // Replace this line
+
+	// uint32_t blockno;
+
+	// if (n < OSPFS_NDIRECT) {
+	// 	blockno = allocate_block();
+	// 	if (!blockno)
+	// 		return -ENOSPC;
+	// 	oi->oi_direct[n] = blockno;
+	// } else {
+
+	// 	uint32_t *indirect[OSPFS_NINDIRECT];
+
+	// 	if (direct_index(n) == 0) {  // need to allocate new indirect block
+	// 		if (indir_index(n) == 1) {  // need to allocate new indirect2 block
+
+	// 		}
+	// 	} else {
+			
+	// 		blockno = allocate_block();
+	// 		if (!blockno)
+	// 			return -ENOSPC;
+
+	// 		// Get pointer to indirect block
+	// 		if (indir_index(n) == 0)
+	// 			;
+	// 	}
+	// }
 }
 
 
@@ -823,10 +864,12 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 		return -EIO; // Replace this line
+		//add_block(oi);
 	}
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 		return -EIO; // Replace this line
+		//remove_block(oi);
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
