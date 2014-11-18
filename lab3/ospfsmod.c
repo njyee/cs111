@@ -757,32 +757,69 @@ add_block(ospfs_inode_t *oi)
 	/* EXERCISE: Your code here */
 	//return -EIO; // Replace this line
 
-	// uint32_t blockno;
+	uint32_t blockno;
 
-	// if (n < OSPFS_NDIRECT) {
-	// 	blockno = allocate_block();
-	// 	if (!blockno)
-	// 		return -ENOSPC;
-	// 	oi->oi_direct[n] = blockno;
-	// } else {
+	if (n < OSPFS_NDIRECT) {
+	
+		blockno = allocate_block();
+		if (!blockno)
+			return -ENOSPC;
+	
+		oi->oi_direct[n] = blockno;
+	
+	} else {
 
-	// 	uint32_t *indirect[OSPFS_NINDIRECT];
+		  // array of block numbers
+		  // address is start of indirect block or indirect^2 block
+		uint32_t indirect[OSPFS_NINDIRECT];
 
-	// 	if (direct_index(n) == 0) {  // need to allocate new indirect block
-	// 		if (indir_index(n) == 1) {  // need to allocate new indirect2 block
-
-	// 		}
-	// 	} else {
+		if (direct_index(n) == 0) {  // need to allocate new indirect block
 			
-	// 		blockno = allocate_block();
-	// 		if (!blockno)
-	// 			return -ENOSPC;
+			if (indir_index(n) == 1) {  // need to allocate new indirect^2 block
+				
+				blockno = allocate_block();
+				if (!blockno)
+					return -ENOSPC;
+				*(allocated[1]) = blockno;
+				oi->oi_indirect2 = blockno;
+			}
 
-	// 		// Get pointer to indirect block
-	// 		if (indir_index(n) == 0)
-	// 			;
-	// 	}
-	// }
+			// Allocate new indirect block
+			blockno = allocate_block();
+			if (!blockno) {
+				// Deallocate allocated
+				return -ENOSPC;
+			}
+			*(allocated[0]) = blockno;
+
+			// Set indirect block number
+			if (indir_index(n) == 0)  // inode
+				oi->oi_indirect = blockno;
+			else {  // indirect^2 block
+				indirect = ospfs_block(oi->oi_indirect2);
+				indirect[indir_index(n)-1] = blockno;
+			}
+
+			// Set data block number
+			indirect = ospfs_block(blockno);
+
+		} else {
+			
+			blockno = allocate_block();
+			if (!blockno)
+				return -ENOSPC;
+
+			// Get pointer to indirect block
+			if (indir_index(n) == 0)  // block number in inode
+				indirect = ospfs_block(oi->oi_indirect);
+			else {  // block number in indir^2 block
+				indirect = ospfs_block(oi->oi_indirect2);
+				indirect = ospfs_block(indirect[indir_index(n)-1]);
+			}
+
+			indirect[direct_index(n)] = blockno;
+		}
+	}
 }
 
 
