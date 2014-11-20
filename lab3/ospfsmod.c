@@ -764,7 +764,8 @@ add_block(ospfs_inode_t *oi)
 		blockno = allocate_block();
 		if (!blockno)
 			return -ENOSPC;
-	
+		memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
+
 		oi->oi_direct[n] = blockno;
 	
 	} else {  // add block number to indirect block
@@ -783,6 +784,7 @@ add_block(ospfs_inode_t *oi)
 				blockno = allocate_block();
 				if (!blockno)
 					return -ENOSPC;
+				memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
 				*(allocated[1]) = blockno;
 
 				// Set indirect^2 block number in inode
@@ -795,6 +797,7 @@ add_block(ospfs_inode_t *oi)
 				// Deallocate allocated
 				return -ENOSPC;
 			}
+			memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
 			*(allocated[0]) = blockno;
 
 			// Set indirect block number
@@ -812,6 +815,7 @@ add_block(ospfs_inode_t *oi)
 			// Deallocate allocated
 			return -ENOSPC;
 		}
+		memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
 
 		// Get pointer to indirect block
 		if (indir_i == 0)  // inode
@@ -824,6 +828,9 @@ add_block(ospfs_inode_t *oi)
 		// Set data block number in indirect block
 		indirect[direct_i] = blockno;
 	}
+
+	oi->oi_size = (n+1) * OSPFS_BLKSIZE;
+	return 0;
 }
 
 
