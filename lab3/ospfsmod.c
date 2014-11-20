@@ -455,7 +455,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * EXERCISE: Your code here */
 		//r = 1;		/* Fix me! */
 		//break;		/* Fix me! */
-		if (f_pos * OSPFS_DIRENTRY_SIZE == dir_oi->oi_size) {
+		if ((f_pos-2) * OSPFS_DIRENTRY_SIZE == dir_oi->oi_size) {
 			r = 1;
 			break;
 		}
@@ -483,7 +483,7 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		/* EXERCISE: Your code here */
 
 		// Get pointer to next directory entry
-		od = ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);
+		od = ospfs_inode_data(dir_oi, (f_pos-2) * OSPFS_DIRENTRY_SIZE);
 
 		if (od->od_ino != 0) {  // Ignore blank entries
 
