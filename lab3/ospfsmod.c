@@ -14,6 +14,7 @@
 #include <asm/uaccess.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
+#include <linux/string.h>
 
 /****************************************************************************
  * ospfsmod
@@ -452,8 +453,12 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * the loop.  For now we do this all the time.
 		 *
 		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
+		//r = 1;		/* Fix me! */
+		//break;		/* Fix me! */
+		if (f_pos * OSPFS_DIRENTRY_SIZE == dir_oi->oi_size) {
+			r = 1;
+			break;
+		}
 
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
@@ -476,6 +481,29 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 */
 
 		/* EXERCISE: Your code here */
+
+		// Get pointer to next directory entry
+		od = ospfs_inode_data(dir_oi, f_pos * OSPFS_DIRENTRY_SIZE);
+
+		if (od->od_ino != 0) {  // Ignore blank entries
+
+			// Get pointer to entry's inode
+			entry_oi = ospfs_inode(od->od_ino);
+
+			// Fill directory entry
+			ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino,
+				entry_oi->oi_ftype == OSPFS_FTYPE_REG ? DT_REG :
+				entry_oi->oi_ftype == OSPFS_FTYPE_DIR ? DT_DIR : DT_LNK);
+
+			// Return 0 if filldir returns < 0
+			if (ok_so_far < 0) {
+				r = 0;
+				break;
+			}
+		}
+
+		// Advance f_pos
+		f_pos++;
 	}
 
 	// Save the file position and return!
@@ -553,6 +581,24 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
+	//return 0;
+
+	uint32_t i;
+
+	// Get pointer to first block in free block bitmap
+	void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
+
+	// Find free block
+	for (i = OSPFS_FREEMAP_BLK + 1; i < ospfs_super->os_nblocks; i++) {
+
+		if (bitvector_test(bitmap, i)) {
+
+			// Mark non-free and return block number
+			bitvector_clear(bitmap, i);
+			return i;
+		}
+	}
+
 	return 0;
 }
 
@@ -572,6 +618,12 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+
+	// Get pointer to first block in free block bitmap
+	void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
+
+	// Mark free
+	bitvector_set(bitmap, blockno);
 }
 
 
@@ -608,7 +660,11 @@ static int32_t
 indir2_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return -1;
+	return 0;
 }
 
 
@@ -627,7 +683,13 @@ static int32_t
 indir_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT)
+		return -1;
+	if (b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return 0;
+	return (b - OSPFS_NDIRECT) / OSPFS_NINDIRECT;
 }
 
 
@@ -644,7 +706,11 @@ static int32_t
 direct_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+	//return -1;
+
+	if (b < OSPFS_NDIRECT)
+		return b;
+	return (b - OSPFS_NDIRECT) % OSPFS_NINDIRECT;
 }
 
 
@@ -689,7 +755,75 @@ add_block(ospfs_inode_t *oi)
 	uint32_t *allocated[2] = { 0, 0 };
 
 	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	//return -EIO; // Replace this line
+
+	uint32_t blockno;
+
+	if (n < OSPFS_NDIRECT) {  // add block number to inode
+	
+		blockno = allocate_block();
+		if (!blockno)
+			return -ENOSPC;
+	
+		oi->oi_direct[n] = blockno;
+	
+	} else {  // add block number to indirect block
+
+		int32_t direct_i = direct_index(n);
+		int32_t indir_i  = indir_index(n);
+
+		  // pointer to indirect block or indirect^2 block as array of block numbers
+		uint32_t *indirect;
+
+		if (direct_i== 0) {  // need to allocate new indirect block
+			
+			if (indir_i == 1) {  // need to allocate new indirect^2 block
+				
+				// Allocate new indirect^2 block
+				blockno = allocate_block();
+				if (!blockno)
+					return -ENOSPC;
+				*(allocated[1]) = blockno;
+
+				// Set indirect^2 block number in inode
+				oi->oi_indirect2 = blockno;
+			}
+
+			// Allocate new indirect block
+			blockno = allocate_block();
+			if (!blockno) {
+				// Deallocate allocated
+				return -ENOSPC;
+			}
+			*(allocated[0]) = blockno;
+
+			// Set indirect block number
+			if (indir_i == 0)  // inode
+				oi->oi_indirect = blockno;
+			else {  // indirect^2 block
+				indirect = ospfs_block(oi->oi_indirect2);
+				indirect[indir_i-1] = blockno;
+			}
+		}
+		
+		// Allocate new data block
+		blockno = allocate_block();
+		if (!blockno) {
+			// Deallocate allocated
+			return -ENOSPC;
+		}
+
+		// Get pointer to indirect block
+		if (indir_i == 0)  // inode
+			indirect = ospfs_block(oi->oi_indirect);
+		else {  // indirect^2 block
+			indirect = ospfs_block(oi->oi_indirect2);
+			indirect = ospfs_block(indirect[indir_i-1]);
+		}
+
+		// Set data block number in indirect block
+		indirect[direct_i] = blockno;
+	}
 }
 
 
@@ -771,10 +905,12 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 		return -EIO; // Replace this line
+		//add_block(oi);
 	}
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
 		return -EIO; // Replace this line
+		//remove_block(oi);
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
@@ -845,17 +981,20 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
 	/* EXERCISE: Your code here */
+	if (count > oi->oi_size - *f_pos)
+		count = oi->oi_size - *f_pos;
 
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
 		uint32_t blockno = ospfs_inode_blockno(oi, *f_pos);
-		uint32_t n;
+		uint32_t n, offset;
 		char *data;
 
 		// ospfs_inode_blockno returns 0 on error
 		if (blockno == 0) {
 			retval = -EIO;
-			goto done;
+			//goto done;
+			break;
 		}
 
 		data = ospfs_block(blockno);
@@ -865,15 +1004,24 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
 		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+		//retval = -EIO; // Replace these lines
+		//goto done;
+		offset = *f_pos % OSPFS_BLKSIZE;
+		if (count - amount < OSPFS_BLKSIZE - offset)
+			n = count - amount;
+		else
+			n = OSPFS_BLKSIZE - offset;
+		if (copy_to_user(buffer, data + offset, n)) {
+			retval = -EFAULT;
+			break;
+		}
 
 		buffer += n;
 		amount += n;
 		*f_pos += n;
 	}
 
-    done:
+    //done:
 	return (retval >= 0 ? amount : retval);
 }
 
