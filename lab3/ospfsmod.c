@@ -759,7 +759,7 @@ add_block(ospfs_inode_t *oi)
 
 	uint32_t blockno;
 
-	if (n < OSPFS_NDIRECT) {
+	if (n < OSPFS_NDIRECT) {  // add block number to inode
 	
 		blockno = allocate_block();
 		if (!blockno)
@@ -767,20 +767,25 @@ add_block(ospfs_inode_t *oi)
 	
 		oi->oi_direct[n] = blockno;
 	
-	} else {
+	} else {  // add block number to indirect block
 
-		  // array of block numbers
-		  // address is start of indirect block or indirect^2 block
-		uint32_t indirect[OSPFS_NINDIRECT];
+		int32_t direct_i = direct_index(n);
+		int32_t indir_i  = indir_index(n);
 
-		if (direct_index(n) == 0) {  // need to allocate new indirect block
+		  // pointer to indirect block or indirect^2 block as array of block numbers
+		uint32_t *indirect;
+
+		if (direct_i== 0) {  // need to allocate new indirect block
 			
-			if (indir_index(n) == 1) {  // need to allocate new indirect^2 block
+			if (indir_i == 1) {  // need to allocate new indirect^2 block
 				
+				// Allocate new indirect^2 block
 				blockno = allocate_block();
 				if (!blockno)
 					return -ENOSPC;
 				*(allocated[1]) = blockno;
+
+				// Set indirect^2 block number in inode
 				oi->oi_indirect2 = blockno;
 			}
 
@@ -793,32 +798,31 @@ add_block(ospfs_inode_t *oi)
 			*(allocated[0]) = blockno;
 
 			// Set indirect block number
-			if (indir_index(n) == 0)  // inode
+			if (indir_i == 0)  // inode
 				oi->oi_indirect = blockno;
 			else {  // indirect^2 block
 				indirect = ospfs_block(oi->oi_indirect2);
-				indirect[indir_index(n)-1] = blockno;
+				indirect[indir_i-1] = blockno;
 			}
-
-			// Set data block number
-			indirect = ospfs_block(blockno);
-
-		} else {
-			
-			blockno = allocate_block();
-			if (!blockno)
-				return -ENOSPC;
-
-			// Get pointer to indirect block
-			if (indir_index(n) == 0)  // block number in inode
-				indirect = ospfs_block(oi->oi_indirect);
-			else {  // block number in indir^2 block
-				indirect = ospfs_block(oi->oi_indirect2);
-				indirect = ospfs_block(indirect[indir_index(n)-1]);
-			}
-
-			indirect[direct_index(n)] = blockno;
 		}
+		
+		// Allocate new data block
+		blockno = allocate_block();
+		if (!blockno) {
+			// Deallocate allocated
+			return -ENOSPC;
+		}
+
+		// Get pointer to indirect block
+		if (indir_i == 0)  // inode
+			indirect = ospfs_block(oi->oi_indirect);
+		else {  // indirect^2 block
+			indirect = ospfs_block(oi->oi_indirect2);
+			indirect = ospfs_block(indirect[indir_i-1]);
+		}
+
+		// Set data block number in indirect block
+		indirect[direct_i] = blockno;
 	}
 }
 
