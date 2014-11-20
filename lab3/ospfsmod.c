@@ -824,6 +824,7 @@ add_block(ospfs_inode_t *oi)
 		// Set data block number in indirect block
 		indirect[direct_i] = blockno;
 	}
+
 }
 
 
@@ -868,24 +869,21 @@ remove_block(ospfs_inode_t *oi)
 		int32_t direct_i = direct_index(n);
 		int32_t indir_i = indir_index(n);
 
+		free_block(oi->oi_direct[direct_i]);
+
 		if(direct_i == 0) {
 			// definitely have to deallocate an indirect
 			// decide whether or not to deallocate indirect2
-			free_block(oi->oi_direct[direct_i]);
-			
-			if(indir_i == 1) {
-
-				// must deallocate an indirect2
-				uint32_t *indirect2 = ospfs_block(oi->oi_indirect2);
-				free_block(indirect2[indir_i-1]);
-				free_block(oi->oi_indirect2);
-
-			} else if(indir_i > 1) {
-			
-				// deallocating indirect within indirect2
+		
+			if(indir_i >= 1) {
+	
+				// indirect within indirect2
 				uint32_t *indirect2 = ospfs_block(oi->oi_indirect2);
 				free_block(indirect2[indir_i-1]);
 
+				if(indir_i == 1) 
+					free_block(oi->oi_indirect2);
+	
 			} else {
 				
 				// deallocating the indirect block itself
