@@ -877,7 +877,7 @@ remove_block(ospfs_inode_t *oi)
 	if(n <= OSPFS_NDIRECT) {
 
 		free_block(oi->oi_direct[direct_index(n)]);
-		oi->oi_direct[direct_i] = 0;
+		oi->oi_direct[direct_index(n)] = 0;
 
 	} else {
 
