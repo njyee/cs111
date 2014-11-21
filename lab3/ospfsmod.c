@@ -945,7 +945,7 @@ static int
 change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
-	int r = 0;
+	//int r = 0;
 
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
 	        /* EXERCISE: Your code here */
@@ -1232,6 +1232,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	
 	ospfs_direntry_t *blank = NULL;
 	uint32_t pos;
+	int block;
 	// find an empty dir entry
 	for(pos = 0; pos*OSPFS_DIRENTRY_SIZE < dir_oi->oi_size; pos++) {
 		// get each dir entry and check if empty (ino == 0)
@@ -1244,7 +1245,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 			return ERR_PTR(-EFAULT);
 	}
 	// no empty dir entry available, need to add block
-	int block = add_block(dir_oi);
+	block = add_block(dir_oi);
 	if(block < 0)
 		return ERR_PTR(block);
 
@@ -1455,7 +1456,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 
 	// Find an empty inode
 	for (; entry_ino < ospfs_super->os_ninodes; entry_ino++) {
-		symlink_oi = ospfs_inode(entry_ino);
+		symlink_oi = (ospfs_symlink_inode_t*) ospfs_inode(entry_ino);
 		if (symlink_oi->oi_nlink == 0)
 			break;
 	}
