@@ -684,6 +684,7 @@ indir_index(uint32_t b)
 {
 	// Your code here.
 	//return -1;
+	return 0;
 
 	if (b < OSPFS_NDIRECT)
 		return -1;
@@ -752,7 +753,7 @@ add_block(ospfs_inode_t *oi)
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
 	// keep track of allocations to free in case of -ENOSPC
-	uint32_t *allocated[2] = { 0, 0 };
+	uint32_t allocated[2] = { 0, 0 };
 
 	/* EXERCISE: Your code here */
 	//return -EIO; // Replace this line
@@ -785,7 +786,7 @@ add_block(ospfs_inode_t *oi)
 				if (!blockno)
 					return -ENOSPC;
 				memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
-				*(allocated[1]) = blockno;
+				allocated[1] = blockno;
 
 				// Set indirect^2 block number in inode
 				oi->oi_indirect2 = blockno;
@@ -798,7 +799,7 @@ add_block(ospfs_inode_t *oi)
 				return -ENOSPC;
 			}
 			memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
-			*(allocated[0]) = blockno;
+			allocated[0] = blockno;
 
 			// Set indirect block number
 			if (indir_i == 0)  // inode
