@@ -1227,7 +1227,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	// return ERR_PTR(-EINVAL); // Replace this line
+	//return ERR_PTR(-EINVAL); // Replace this line
 	
 	ospfs_direntry_t *blank = NULL;
 	uint32_t pos;
@@ -1351,7 +1351,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
 	/* EXERCISE: Your code here. */
-	// return -EINVAL; // Replace this line
+	//return -EINVAL; // Replace this line
 	ospfs_inode_t *file_oi   = NULL;
 	ospfs_direntry_t *new_entry = NULL;	
 	
@@ -1376,7 +1376,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 		return -ENOSPC;
 
 	// find blank dir
-	new_entry = create_blank_directory(dir_oi);
+	new_entry = create_blank_direntry(dir_oi);
 	if(IS_ERR(new_entry))
 		return PTR_ERR(new_entry);
 
