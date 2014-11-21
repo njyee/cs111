@@ -11,14 +11,14 @@
 # information you'd like us to know, please add it at the end of the file.
 
 # Partner 1
-Name: 
-Student ID: 
-Email: 
+Name: Nicholas Yee
+Student ID: 803946252
+Email: njyee@ucla.edu
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Thomas Lutton
+Student ID: 304180703
+Email: tlutton@ucla.edu
 
 # Extra credit problems
 #Extra credit problem: none
