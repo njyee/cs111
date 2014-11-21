@@ -877,6 +877,7 @@ remove_block(ospfs_inode_t *oi)
 	if(n <= OSPFS_NDIRECT) {
 
 		free_block(oi->oi_direct[direct_index(n)]);
+		oi->oi_direct[direct_i] = 0;
 
 	} else {
 
@@ -884,6 +885,7 @@ remove_block(ospfs_inode_t *oi)
 		int32_t indir_i = indir_index(n);
 
 		free_block(oi->oi_direct[direct_i]);
+		oi->oi_direct[direct_i] = 0;
 
 		if(direct_i == 0) {
 			// definitely have to deallocate an indirect
@@ -894,15 +896,18 @@ remove_block(ospfs_inode_t *oi)
 				// indirect within indirect2
 				uint32_t *indirect2 = ospfs_block(oi->oi_indirect2);
 				free_block(indirect2[indir_i-1]);
+				indirect2[indir_i-1] = 0;
 
-				if(indir_i == 1) 
+				if(indir_i == 1) { 
 					free_block(oi->oi_indirect2);
+					oi->oi_indirect2 = 0;
+				}	
 	
 			} else {
 				
 				// deallocating the indirect block itself
 				free_block(oi->oi_indirect);
-			
+				oi->oi_indirect = 0;
 			}
 		}
 	
