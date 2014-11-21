@@ -622,8 +622,14 @@ free_block(uint32_t blockno)
 	// Get pointer to first block in free block bitmap
 	void *bitmap = ospfs_block(OSPFS_FREEMAP_BLK);
 
+	// Find first data block
+	uint32_t first = ospfs_super->os_nblocks / (OSPFS_BLKSIZE * 8)
+	               + ospfs_super->os_ninodes / (OSPFS_BLKSIZE / OSPFS_INODESIZE)
+	               + 2;
+
 	// Mark free
-	bitvector_set(bitmap, blockno);
+	if (blockno >= first && blockno < ospfs_super->os_nblocks)
+		bitvector_set(bitmap, blockno);
 }
 
 
@@ -795,7 +801,7 @@ add_block(ospfs_inode_t *oi)
 			// Allocate new indirect block
 			blockno = allocate_block();
 			if (!blockno) {
-				// Deallocate allocated
+				free_block(allocated[1]);
 				return -ENOSPC;
 			}
 			memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
@@ -813,7 +819,8 @@ add_block(ospfs_inode_t *oi)
 		// Allocate new data block
 		blockno = allocate_block();
 		if (!blockno) {
-			// Deallocate allocated
+			free_block(allocated[0]);
+			free_block(allocated[1]);
 			return -ENOSPC;
 		}
 		memset(ospfs_block(blockno), 0, OSPFS_BLKSIZE);
