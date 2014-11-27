@@ -15,6 +15,12 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/string.h>
+#include <linux/ioctl.h>
+//#include <sys/ioctl.h>
+#include "ioctl.h"
+
+int ospfs_ioctl(struct inode *inode, struct file *filp,
+	unsigned int cmd, unsigned long arg);
 
 /****************************************************************************
  * ospfsmod
@@ -1539,7 +1545,8 @@ static struct inode_operations ospfs_reg_inode_ops = {
 static struct file_operations ospfs_reg_file_ops = {
 	.llseek		= generic_file_llseek,
 	.read		= ospfs_read,
-	.write		= ospfs_write
+	.write		= ospfs_write,
+	.ioctl		= ospfs_ioctl
 };
 
 static struct inode_operations ospfs_dir_inode_ops = {
@@ -1589,3 +1596,14 @@ module_exit(exit_ospfs_fs)
 MODULE_AUTHOR("Skeletor");
 MODULE_DESCRIPTION("OSPFS");
 MODULE_LICENSE("GPL");
+
+
+/*
+ * ospfs_ioctl(inode, filp, cmd, arg)
+ *   Called to perform an ioctl on the named file.
+ */
+int ospfs_ioctl(struct inode *inode, struct file *filp,
+		unsigned int cmd, unsigned long arg)
+{
+	return 99;
+}

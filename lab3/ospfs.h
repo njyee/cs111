@@ -2,6 +2,11 @@
 #define OSPFS_H
 // OSPFS Constants and Structure Definitions
 
+// #include <linux/ioctl.h>
+// //#include <sys/ioctl.h>
+// #define IOCTL_NUM 100
+// #define IOCTL_CRASH _IOWR(IOCTL_NUM, 0 /*, char **/);
+
 /*****************************************************************************
  * BLOCKS
  *
