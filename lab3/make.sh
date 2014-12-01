@@ -1,1 +1,1 @@
-gcc test-ioctl.c -o runme
+gcc test-ioctl.c -o zoo

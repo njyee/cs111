@@ -16,11 +16,10 @@
 #include <linux/sched.h>
 #include <linux/string.h>
 #include <linux/ioctl.h>
-//#include <sys/ioctl.h>
 #include "ioctl.h"
 
-int ospfs_ioctl(struct inode *inode, struct file *filp,
-	unsigned int cmd, unsigned long arg);
+static int
+ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg);
 
 /****************************************************************************
  * ospfsmod
@@ -46,6 +45,8 @@ extern uint32_t ospfs_length;
 // A pointer to the superblock; see ospfs.h for details on the struct.
 static ospfs_super_t * const ospfs_super =
 	(ospfs_super_t *) &ospfs_data[OSPFS_BLKSIZE];
+
+static int nwrites_to_crash = -1;
 
 static int change_size(ospfs_inode_t *oi, uint32_t want_size);
 static ospfs_direntry_t *find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen);
@@ -1401,15 +1402,27 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 		return PTR_ERR(new_entry);
 
 	// initialize the dir entry
-	new_entry->od_ino = entry_ino;
-	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
-	new_entry->od_name[dentry->d_name.len] = '\0';
-
+	if (nwrites_to_crash != 0) {
+		new_entry->od_ino = entry_ino;
+		if (nwrites_to_crash > 0)
+			nwrites_to_crash--;
+	}
+	if (nwrites_to_crash != 0) {
+		memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+		new_entry->od_name[dentry->d_name.len] = '\0';
+		if (nwrites_to_crash > 0)
+			nwrites_to_crash--;
+	}
+	
 	// initialize the inode
-	file_oi->oi_size = 0; // blank file
-	file_oi->oi_ftype = OSPFS_FTYPE_REG;
-	file_oi->oi_nlink = 1;
-	file_oi->oi_mode = mode;	
+	if (nwrites_to_crash != 0) {
+		file_oi->oi_size = 0; // blank file
+		file_oi->oi_ftype = OSPFS_FTYPE_REG;
+		file_oi->oi_nlink = 1;
+		file_oi->oi_mode = mode;
+		if (nwrites_to_crash > 0)
+			nwrites_to_crash--;
+	}
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
@@ -1602,8 +1615,11 @@ MODULE_LICENSE("GPL");
  * ospfs_ioctl(inode, filp, cmd, arg)
  *   Called to perform an ioctl on the named file.
  */
-int ospfs_ioctl(struct inode *inode, struct file *filp,
-		unsigned int cmd, unsigned long arg)
+static int
+ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg)
 {
-	return 99;
+	if ((int) arg < -1)
+		return -22;  // errno: EINVAL
+	nwrites_to_crash = arg;
+	return 0;
 }
