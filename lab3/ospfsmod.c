@@ -18,8 +18,8 @@
 #include <linux/ioctl.h>
 #include "ioctl.h"
 
-static int
-ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg);
+static int ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned long arg);
+static int crash_test(void);
 
 /****************************************************************************
  * ospfsmod
@@ -1402,26 +1402,32 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 		return PTR_ERR(new_entry);
 
 	// initialize the dir entry
-	if (nwrites_to_crash != 0) {
+	if (crash_test()) {
+		//eprintk("set dir entry inode number\n");
 		new_entry->od_ino = entry_ino;
-		if (nwrites_to_crash > 0)
-			nwrites_to_crash--;
 	}
-	if (nwrites_to_crash != 0) {
+	if (crash_test()) {
+		//eprintk("set dir entry name\n");
 		memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
 		new_entry->od_name[dentry->d_name.len] = '\0';
-		if (nwrites_to_crash > 0)
-			nwrites_to_crash--;
 	}
-	
+
 	// initialize the inode
-	if (nwrites_to_crash != 0) {
+	if (crash_test()) {
+		//eprintk("set inode file size\n");
 		file_oi->oi_size = 0; // blank file
+	}
+	if (crash_test()) {
+		//eprintk("set inode file type\n");
 		file_oi->oi_ftype = OSPFS_FTYPE_REG;
+	}
+	if (crash_test()) {
+		//eprintk("set inode link count\n");
 		file_oi->oi_nlink = 1;
+	}
+	if (crash_test()) {
+		//eprintk("set inode mode\n");
 		file_oi->oi_mode = mode;
-		if (nwrites_to_crash > 0)
-			nwrites_to_crash--;
 	}
 
 	/* Execute this code after your function has successfully created the
@@ -1622,4 +1628,9 @@ ospfs_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsigned l
 		return -22;  // errno: EINVAL
 	nwrites_to_crash = arg;
 	return 0;
+}
+
+static int crash_test(void)
+{
+	return (nwrites_to_crash > 0) ? nwrites_to_crash-- : nwrites_to_crash;
 }
