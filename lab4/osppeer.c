@@ -23,6 +23,7 @@
 #include "md5.h"
 #include "osp2p.h"
 #include <sys/wait.h>  // waitpid
+#include <string.h>    // strchr
 
 int evil_mode;			// nonzero iff this peer should behave badly
 
@@ -650,6 +651,16 @@ static void task_upload(task_t *t)
 	}
 	t->head = t->tail = 0;
 
+
+	// TASK 2: Do not serve files outside of the current directory
+
+	// Check for '/' in filename
+	if (strchr(t->filename, '/')) {
+		error("* File outside current directory");
+		goto exit;
+	}
+
+
 	t->disk_fd = open(t->filename, O_RDONLY);
 	if (t->disk_fd == -1) {
 		error("* Cannot open file %s", t->filename);
@@ -759,6 +770,10 @@ int main(int argc, char *argv[])
 	listen_task = start_listen();
 	register_files(tracker_task, myalias);
 
+
+	// TASK 1: Parallel downloads & uploads
+	//   Run each task in a child process.
+
 	// First, download files named on command line.
 	for (; argc > 1; argc--, argv++)
 		if ((t = start_download(tracker_task, argv[1]))) {
@@ -768,8 +783,8 @@ int main(int argc, char *argv[])
 			else if (p == 0) {
 				task_download(t, tracker_task);
 				_exit(0);
-			}
-			nchildren++;
+			} else
+				nchildren++;
 		}
 
 	// Wait for children
@@ -779,13 +794,13 @@ int main(int argc, char *argv[])
 	// Then accept connections from other peers and upload files to them!
 	nchildren = 0;
 	while ((t = task_listen(listen_task))) {
-			pid_t p = fork();
-			if (p < 0)
-				error("Fork failed.");
-			else if (p == 0) {
-				task_upload(t);
-				_exit(0);
-			}
+		pid_t p = fork();
+		if (p < 0)
+			error("Fork failed.");
+		else if (p == 0) {
+			task_upload(t);
+			_exit(0);
+		} else
 			nchildren++;
 	}
 
