@@ -1,3 +1,34 @@
+sort read-command.c
+
+sleep 1
+sleep 1
+
+ls -a | cat > f.txt
+
+mv f.txt g.txt
+
+ls -a > i.txt
+
+diff g.txt i.txt
+
+#mkdir test
+
+#ps
+
+grep command read-command.c
+
+less main.c
+
+who | cat | cat | cat > h.txt
+
+whoami
+
+
+
+
+
+
+
 # simple command
 
 ls
