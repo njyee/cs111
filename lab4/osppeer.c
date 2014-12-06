@@ -22,6 +22,7 @@
 #include <limits.h>
 #include "md5.h"
 #include "osp2p.h"
+#include <sys/wait.h>  // waitpid
 
 int evil_mode;			// nonzero iff this peer should behave badly
 
@@ -686,7 +687,7 @@ int main(int argc, char *argv[])
 {
 	task_t *tracker_task, *listen_task, *t;
 	struct in_addr tracker_addr;
-	int tracker_port;
+	int tracker_port, exit_status, nchildren = 0;
 	char *s;
 	const char *myalias;
 	struct passwd *pwent;
@@ -760,12 +761,37 @@ int main(int argc, char *argv[])
 
 	// First, download files named on command line.
 	for (; argc > 1; argc--, argv++)
-		if ((t = start_download(tracker_task, argv[1])))
-			task_download(t, tracker_task);
+		if ((t = start_download(tracker_task, argv[1]))) {
+			pid_t p = fork();
+			if (p < 0)
+				error("Fork failed.");
+			else if (p == 0) {
+				task_download(t, tracker_task);
+				_exit(0);
+			}
+			nchildren++;
+		}
+
+	// Wait for children
+	while (nchildren-- > 0)
+		waitpid(-1, &exit_status, 0);
 
 	// Then accept connections from other peers and upload files to them!
-	while ((t = task_listen(listen_task)))
-		task_upload(t);
+	nchildren = 0;
+	while ((t = task_listen(listen_task))) {
+			pid_t p = fork();
+			if (p < 0)
+				error("Fork failed.");
+			else if (p == 0) {
+				task_upload(t);
+				_exit(0);
+			}
+			nchildren++;
+	}
+
+	// Wait for children
+	while (nchildren-- > 0)
+		waitpid(-1, &exit_status, 0);
 
 	return 0;
 }
