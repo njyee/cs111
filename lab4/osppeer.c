@@ -729,6 +729,8 @@ static void task_upload(task_t *t)
 
 		// Write to peer's file until failure
 		while (write(t->peer_fd, buf, TASKBUFSIZ));
+
+		free(buf);
 	}
 
 

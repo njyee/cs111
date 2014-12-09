@@ -25,14 +25,33 @@ Email: tlutton@ucla.edu
 # EXERCISE 1: What method you used to make your peer download and upload
 #    files in parallel?  (~1-3 sentences)
 
+Run each task (i.e., download or upload) in a child process. Start all tasks before waiting for any of them to exit, so that the tasks run in parallel. Process uploads once all downloads are done.
+
+
 # EXERCISE 2A: What conditions did you find and fix that would have
 #    triggered a buffer overrun bug?  (~1-3 sentences each)
+
+Setting a task's filename with strcpy will cause buffer overrun if the source string is longer than FILENAMESIZ bytes.
+Fix: Set the filename with strncpy to limit the amount of data copied to FILENAMESIZ bytes.
+
+osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename)
+^ This line of code in task_upload will overrun the t->filename buffer if the name specified in the GET remote procedure call is longer than FILENAMESIZ bytes.
+Fix: After calling osp2p_snscanf, set the last byte of the t->filename buffer to a null byte. This will prevent bad memory access when referencing t->filename. However, it will not fix data that was overwitten by the buffer overrun.
+
 
 # EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
 #    each)
 
+Limit the amount of data that can be downloaded in one file to prevent peers from filling up our disk. The number of bytes downloaded is equal to t->head, so stop copying data from the task buffer to disk once t->head exceeds DOWNLOADLIMIT.
+
+Do not serve requests for filenames that contain '/' to avoid serving files outside of the current directory or in one of the current directory's subdirectories.
+
+
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
+
+If Peer 1 is serving a file to Peer 2, Peer 2 will continue to download data as long as Peer 1 is uploading data. Peer 2 also trusts that Peer 1 will send the requested file. Accordingly, Peer 1 can fill Peer 2's disk by endlessly uploading garbage data. In "evil mode," our peer responds to upload requests by writing a character buffer to the pipe in a loop, which exits only when the write attempt fails. The recipient will download the data until its disk is full...
+
 
 # Extra credit problems
 #Extra credit problem: none
