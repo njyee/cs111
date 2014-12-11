@@ -43,7 +43,7 @@ static int listen_port;
  * a bounded buffer that simplifies reading from and writing to peers.
  */
 
-#define TASKBUFSIZ	4096	// Size of task_t::buf
+#define TASKBUFSIZ	16384	// Size of task_t::buf (2^14)
 #define FILENAMESIZ	256	// Size of task_t::filename
 
 typedef enum tasktype {		// Which type of connection is this?
@@ -304,7 +304,7 @@ static size_t read_tracker_response(task_t *t)
 
 	while (1) {
 		// Check for whether buffer is complete.
-		for (; pos+3 < t->tail; pos++)
+		for (; pos+3 < t->tail; pos++) {
 			if ((pos == 0 || t->buf[pos-1] == '\n')
 			    && isdigit((unsigned char) t->buf[pos])
 			    && isdigit((unsigned char) t->buf[pos+1])
@@ -319,6 +319,8 @@ static size_t read_tracker_response(task_t *t)
 					return split_pos;
 				}
 			}
+			
+		}
 
 		// If not, read more data.  Note that the read will not block
 		// unless NO data is available.
@@ -674,7 +676,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 			size_in_bytes = ftell(file_ptr); 
 			
 			// read in the file data 
-			file_data = (unsigned char*)malloc(sizeof(char) * size_in_bytes);
+			file_data = (unsigned char*)malloc(size_in_bytes);
 			fread(file_data, 1, size_in_bytes, file_ptr);
 
 			// init, append, and finish text to calculate checksum

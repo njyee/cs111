@@ -60,6 +60,17 @@ Do not serve requests for filenames that contain '/' to avoid serving files
 outside of the current directory or in one of the current directory's 
 subdirectories.
 
+There is also a problem when using the popular tracker. The popular tracker
+contains many peers that are ready to serve the file. In fact, there are
+so many peers that want to serve the file, that the messages that the
+tracker sends back over flow the task buffer. A simple fix of this problem
+is to increase TASKBUFSIZE beyond 4096 to a much larger number. We chose
+16384 which is 4x larger than the original value. The actual bug itself 
+occurs within read_tracker_response. This function trusts the tracker
+to terminate its write before the buffer fills, but this obviously not the
+case. A better solution is to not allow the tracker to overwrite the buffer.
+The code could throw an error, or it could just cut off the task.  
+
 
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
