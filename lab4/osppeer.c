@@ -34,6 +34,17 @@ static int listen_port;
 #define LONGNAMESIZ 1024  // buffer overflow
 
 
+// DESIGN PROBLEM
+
+typedef enum encryption {
+	NONE,
+	MASK,
+	ENCRYPT
+} encryption_t;
+
+encryption_t encrypt_mode;
+
+
 /*****************************************************************************
  * TASK STRUCTURE
  * Holds all information relevant for a peer or tracker connection, including
@@ -162,16 +173,21 @@ typedef enum taskbufresult {		// Status of a read or write attempt.
 //	whichever comes first.  Return values are TBUF_ constants, above;
 //	generally a return value of TBUF_AGAIN means 'try again later'.
 //	The task buffer is capped at TASKBUFSIZ.
-taskbufresult_t read_to_taskbuf(int fd, task_t *t)
+taskbufresult_t read_to_taskbuf(int fd, task_t *t, encryption_t e)
 {
+	// DESIGN PROBLEM
+
+	char buf[TASKBUFSIZ];
 	unsigned headpos = (t->head % TASKBUFSIZ);
 	unsigned tailpos = (t->tail % TASKBUFSIZ);
 	ssize_t amt;
 
 	if (t->head == t->tail || headpos < tailpos)
-		amt = read(fd, &t->buf[tailpos], TASKBUFSIZ - tailpos);
+		//amt = read(fd, &t->buf[tailpos], TASKBUFSIZ - tailpos);
+		amt = read(fd, buf, TASKBUFSIZ - tailpos);
 	else
-		amt = read(fd, &t->buf[tailpos], headpos - tailpos);
+		//amt = read(fd, &t->buf[tailpos], headpos - tailpos);
+		amt = read(fd, buf, headpos - tailpos);
 
 	if (amt == -1 && (errno == EINTR || errno == EAGAIN
 			  || errno == EWOULDBLOCK))
@@ -181,6 +197,11 @@ taskbufresult_t read_to_taskbuf(int fd, task_t *t)
 	else if (amt == 0)
 		return TBUF_END;
 	else {
+
+		if (e == ENCRYPT)
+			xor_encrypt(buf, amt);
+		strncpy(&t->buf[tailpos], buf, amt);
+
 		t->tail += amt;
 		return TBUF_OK;
 	}
@@ -214,6 +235,36 @@ taskbufresult_t write_from_taskbuf(int fd, task_t *t)
 		t->head += amt;
 		t->total_written += amt;
 		return TBUF_OK;
+	}
+}
+
+
+//
+void xor_encrypt(/*const char *key, int key_len,*/ char *data, int data_len)
+{
+	// TODO: don't hardcode
+	const char *key = "password";
+	int key_len = 8;
+
+	int i, j;
+	for (i = 0; i < data_len; i++) {
+		for (j = 0; j < key_len; j++)
+			data[i] ^= key[j];
+	}
+}
+
+
+//
+void xor_decrypt(/*const char *key, int key_len,*/ char *data, int data_len)
+{
+	// TODO: don't hardcode
+	const char *key = "password";
+	int key_len = 8;
+
+	int i, j;
+	for (i = 0; i < data_len; i++) {
+		for (j = 0; j < key_len; j++)
+			data[i] ^= key[key_len - j - 1];
 	}
 }
 
