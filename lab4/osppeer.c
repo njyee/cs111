@@ -77,6 +77,9 @@ typedef struct task {
 				// function initializes this list;
 				// task_pop_peer() removes peers from it, one
 				// at a time, if a peer misbehaves.
+
+	char md5_checksum[MD5_TEXT_DIGEST_SIZE+1]; // md5 checksum text digest
+
 } task_t;
 
 
@@ -99,6 +102,8 @@ static task_t *task_new(tasktype_t type)
 
 	strcpy(t->filename, "");
 	strcpy(t->disk_filename, "");
+
+	memset(t->md5_checksum, 0, MD5_TEXT_DIGEST_SIZE+1);
 
 	return t;
 }
@@ -126,6 +131,7 @@ static void task_pop_peer(task_t *t)
 			free(t->peer_list);
 			t->peer_list = n;
 		}
+
 	}
 }
 
@@ -370,6 +376,7 @@ task_t *start_listen(void)
 	for (listen_port = 11112; listen_port < 13000; listen_port++)
 		if ((fd = open_socket(addr, listen_port)) != -1)
 			goto bound;
+		
 		else if (errno != EADDRINUSE)
 			die("cannot make listen socket");
 
@@ -467,6 +474,30 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 	size_t messagepos;
 	assert(tracker_task->type == TASK_TRACKER);
 
+	message("* Finding checksum of '%s'\n", filename);
+
+	osp2p_writef(tracker_task->peer_fd, "MD5SUM %s\n", filename); // via telnet
+	messagepos = read_tracker_response(tracker_task);
+	
+	if(tracker_task->buf[messagepos] == '2') { // valid messagepos
+
+		s1 = tracker_task->buf;
+		if((s2 = memchr(s1, '\n', (tracker_task->buf + messagepos) - s1)))
+		{
+			// copy the checksum into the tracker_task checksum
+			osp2p_snscanf(s1, (s2-s1), "%s\n", tracker_task->md5_checksum);
+			tracker_task->md5_checksum[MD5_TEXT_DIGEST_SIZE] = 0;	
+			if(strlen(tracker_task->md5_checksum) < MD5_TEXT_DIGEST_SIZE) {
+				// checksum is too short
+				strcpy(tracker_task->md5_checksum, "");
+				message("* Checksum for file '%s' too short.\n", filename);
+			}
+			else // got the checksum
+				message("* Checksum for file '%s' is '%s'\n", filename, tracker_task->md5_checksum);
+
+		}
+	}
+
 	message("* Finding peers for '%s'\n", filename);
 
 	osp2p_writef(tracker_task->peer_fd, "WANT %s\n", filename);
@@ -481,7 +512,6 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		error("* Error while allocating task");
 		goto exit;
 	}
-
 
 	// TASK 2: Prevent buffer overflow
 
@@ -616,6 +646,43 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 		// Empty files are usually a symptom of some error.
 		if (t->total_written > 0) {
+
+			// Make sure the checksums match of the expected
+			// and downloaded file
+
+			char checksum[MD5_TEXT_DIGEST_SIZE+1];
+			md5_state_t state;
+			FILE *file_ptr;
+			int size_in_bytes;
+			unsigned char* file_data;
+
+			file_ptr = fopen(t->disk_filename, "r");
+			// seek to end of file to place cursor then
+			// tell cursor location for file size in bytes
+			fseek(file_ptr, 0, SEEK_END);
+			size_in_bytes = ftell(file_ptr); 
+			
+			// read in the file data 
+			file_data = (unsigned char*)malloc(sizeof(char) * size_in_bytes);
+			fread(file_data, 1, size_in_bytes, file_ptr);
+
+			// init, append, and finish text to calculate checksum
+			md5_init(&state);
+			md5_append(&state, file_data, size_in_bytes);
+			md5_finish_text(&state, t->md5_checksum, 1);
+
+			fclose(file_ptr); // done with file_ptr
+			free(file_data);  // done with file_data
+			
+			if(!strncmp(checksum, t->md5_checksum, MD5_TEXT_DIGEST_SIZE)) {
+				error("* MD5 checksums of '%s' did not match. Try new peer.\n", t->disk_filename);
+				goto try_again;
+			} else {
+
+				message("* MD5 checksums of '%s' matched, download is safe.\n", t->disk_filename);
+
+			} 
+
 			message("* Downloaded '%s' was %lu bytes long\n",
 				t->disk_filename, (unsigned long) t->total_written);
 			// Inform the tracker that we now have the file,
