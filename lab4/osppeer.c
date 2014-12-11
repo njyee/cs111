@@ -30,6 +30,9 @@ int evil_mode;			// nonzero iff this peer should behave badly
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
 
+// TASK 2
+#define DOWNLOADLIMIT 1000000  // 1 MB
+
 // TASK 3
 #define LONGNAMESIZ 1024  // buffer overflow
 
@@ -629,6 +632,14 @@ static void task_download(task_t *t, task_t *tracker_task)
 		// Read the file into the task buffer from the peer,
 		// and write it from the task buffer onto disk.
 		while (1) {
+
+
+			// TASK 2: Do not let peer fill our disk
+
+			if (t->head > DOWNLOADLIMIT)
+				break;
+
+
 			int ret = read_to_taskbuf(t->peer_fd, t);
 			if (ret == TBUF_ERROR) {
 				error("* Peer read error");
@@ -761,6 +772,12 @@ static void task_upload(task_t *t)
 	t->head = t->tail = 0;
 
 
+	// TASK 2: Handle buffer overflow attacks
+
+	// Ensure filename is null-terminated
+	t->filename[FILENAMESIZ] = '\0';
+
+
 	// TASK 2: Do not serve files outside of the current directory
 
 	// Check for '/' in filename
@@ -779,6 +796,8 @@ static void task_upload(task_t *t)
 
 		// Write to peer's file until failure
 		while (write(t->peer_fd, buf, TASKBUFSIZ));
+
+		free(buf);
 	}
 
 
