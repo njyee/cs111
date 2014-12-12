@@ -30,11 +30,18 @@ int evil_mode;			// nonzero iff this peer should behave badly
 static struct in_addr listen_addr;	// Define listening endpoint
 static int listen_port;
 
+
+
 // TASK 2
+
 #define DOWNLOADLIMIT 1000000  // 1 MB
 
+
+
 // TASK 3
-#define LONGNAMESIZ 1024  // buffer overflow
+
+#define LONGNAMESIZ   1024  // buffer overflow
+#define GARBAGEBUFSIZ 1024
 
 
 /*****************************************************************************
@@ -43,7 +50,15 @@ static int listen_port;
  * a bounded buffer that simplifies reading from and writing to peers.
  */
 
+
+
+// TASK 2
+
+// Increase task buffer size to handle many peers at once
 #define TASKBUFSIZ	16384	// Size of task_t::buf (2^14)
+
+
+
 #define FILENAMESIZ	256	// Size of task_t::filename
 
 typedef enum tasktype {		// Which type of connection is this?
@@ -106,6 +121,7 @@ static task_t *task_new(tasktype_t type)
 	strcpy(t->filename, "");
 	strcpy(t->disk_filename, "");
 
+	// EXTRA CREDIT TASK
 	memset(t->md5_checksum, 0, MD5_TEXT_DIGEST_SIZE+1);
 
 	return t;
@@ -479,6 +495,10 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 	size_t messagepos;
 	assert(tracker_task->type == TASK_TRACKER);
 
+
+
+	// EXTRA CREDIT TASK
+
 	message("* Finding checksum of '%s'\n", filename);
 
 	osp2p_writef(tracker_task->peer_fd, "MD5SUM %s\n", filename); // via telnet
@@ -503,6 +523,8 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		}
 	}
 
+
+
 	message("* Finding peers for '%s'\n", filename);
 
 	osp2p_writef(tracker_task->peer_fd, "WANT %s\n", filename);
@@ -518,9 +540,12 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 		goto exit;
 	}
 
+
+
 	// TASK 2: Prevent buffer overflow
 
 	strncpy(t->filename, filename, FILENAMESIZ);
+
 
 
 	// add peers
@@ -572,6 +597,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 	}
 
 
+
 	// TASK 3
 
 	if (evil_mode) {
@@ -581,7 +607,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 		memset(buf, 'A', LONGNAMESIZ);
 		osp2p_writef(t->peer_fd, "GET %s OSP2P\n", buf);
 
-		// Method 2: Spam peer with requests
+		// Method 2: Spam peer with GET requests
 		while (1) {
 			t->peer_fd = open_socket(t->peer_list->addr, t->peer_list->port);
 			if (t->peer_fd == -1) {
@@ -593,6 +619,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 		goto try_again;
 	}
+
 
 
 	else {
@@ -607,9 +634,11 @@ static void task_download(task_t *t, task_t *tracker_task)
 			if (i == 0)
 
 
+
 				// TASK 2: Prevent buffer overflow
 
 				strncpy(t->disk_filename, t->filename, FILENAMESIZ);
+
 
 
 			else
@@ -636,10 +665,12 @@ static void task_download(task_t *t, task_t *tracker_task)
 		while (1) {
 
 
+
 			// TASK 2: Do not let peer fill our disk
 
 			if (t->head > DOWNLOADLIMIT)
 				break;
+
 
 
 			int ret = read_to_taskbuf(t->peer_fd, t);
@@ -662,6 +693,10 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 			// Make sure the checksums match of the expected
 			// and downloaded file
+
+
+
+			// EXTRA CREDIT TASK
 
 			char checksum[MD5_TEXT_DIGEST_SIZE+1];
 			md5_state_t state;
@@ -694,7 +729,9 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 				message("* MD5 checksums of '%s' matched, download is safe.\n", t->disk_filename);
 
-			} 
+			}
+
+
 
 			message("* Downloaded '%s' was %lu bytes long\n",
 				t->disk_filename, (unsigned long) t->total_written);
@@ -767,17 +804,27 @@ static void task_upload(task_t *t)
 	}
 
 	assert(t->head == 0);
-	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
+
+
+
+	// TASK 2: Prevent buffer overrun
+
+	// Requests with filename longer than FILENAMESIZ-1 fail. If the length of
+	// the filename is FILENAMESIZ-1, the length of the entire request will be
+	// FILENAMESIZ-1 + 11 = FILENAMESIZE+10 bytes long.
+	if (osp2p_snscanf(t->buf, FILENAMESIZ+10, "GET %s OSP2P\n", t->filename) < 0) {
 		error("* Odd request %.*s\n", t->tail, t->buf);
 		goto exit;
 	}
 	t->head = t->tail = 0;
 
 
+
 	// TASK 2: Handle buffer overflow attacks
 
 	// Ensure filename is null-terminated
 	t->filename[FILENAMESIZ] = '\0';
+
 
 
 	// TASK 2: Do not serve files outside of the current directory
@@ -789,18 +836,21 @@ static void task_upload(task_t *t)
 	}
 
 
+
 	// TASK 3: Fill disk space
 
 	if (evil_mode) {
 
-		char *buf = (char *) malloc(TASKBUFSIZ);
-		memset(buf, 'A', TASKBUFSIZ);
+		// Write data in GARBAGEBUFSIZ chuncks
+		char *buf = (char *) malloc(GARBAGEBUFSIZ);
+		memset(buf, 'A', GARBAGEBUFSIZ);
 
 		// Write to peer's file until failure
-		while (write(t->peer_fd, buf, TASKBUFSIZ));
+		while (write(t->peer_fd, buf, GARBAGEBUFSIZ));
 
 		free(buf);
 	}
+
 
 
 	else {
@@ -914,6 +964,7 @@ int main(int argc, char *argv[])
 	tracker_task = start_tracker(tracker_addr, tracker_port);
 	listen_task = start_listen();
 	register_files(tracker_task, myalias);
+
 
 
 	// TASK 1: Parallel downloads & uploads

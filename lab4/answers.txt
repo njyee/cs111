@@ -40,9 +40,16 @@ filename with strncpy to limit the amount of data copied to FILENAMESIZ bytes.
 osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename)
 ^ This line of code in task_upload will overrun the t->filename buffer if 
 the name specified in the GET remote procedure call is longer than 
-FILENAMESIZ bytes. To fix this, after calling osp2p_snscanf, set the last byte 
-of the t->filename buffer to a null byte. This will prevent bad memory access 
-when referencing t->filename. However, it will not fix data that was 
+FILENAMESIZ-1 bytes. To fix this, limit the number of bytes read from t->buf
+to FILENAMESIZ-1 bytes + 11 remaining bytes in request = FILENAMESIZ+10 bytes.
+If the requested filename is longer than this limit, the string read from
+t->buf will not match the provided format and the process will exit with an
+"odd request" error.
+
+As an additional check that the filename buffer does not overflow because of
+a long requested filename, after copying the name to t->filename set the last
+byte of the t->filename buffer to a null byte. This will prevent bad memory
+access  when referencing t->filename, but it will not fix data that was 
 overwitten by the buffer overrun.
 
 
@@ -73,14 +80,33 @@ The code could throw an error, or it could just cut off the task.
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
 
-If Peer 1 is serving a file to Peer 2, Peer 2 will continue to download data 
-as long as Peer 1 continues to upload. Since Peer 2 also trusts that Peer 1 
-will send the requested file, we can fill the disk of Peer 1 by writing
-infinitely. Accordingly, Peer 1 can fill Peer 2's disk by endlessly 
-uploading garbage data. In "evil mode," our peer responds to upload 
-requests by writing a character buffer to the pipe in a loop, which exits 
-only when the write attempt fails. The recipient will download the data 
-until its disk is full.
+DOWNLOADER ATTACKS:
+
+Our peer seeks out new peers to attack.
+
+The skeleton code is susceptible to buffer overflow if a peer requests a file
+with a name that is longer than FILENAMESIZ-1 (see EXERCISE 2A above). Our peer
+sends a WANT request and receives a list of peers with that file. The normal
+process is to connect to that peer and send a GET request that specifies the
+filename. In evil mode, our peer sends a GET request with a filename that is
+LONGNAMESIZ bytes long, where LONGNAMESIZ > FILENAMESIZ-1. The serving peer
+copies the name into its filename buffer, thereby overflowing the buffer. The
+attack has two effects. First, data located right next to the filename buffer
+will be overwritten. Second, any references to the filename buffer will access
+memory past the end of the buffer, since the string is not null-terminated.
+
+After requesting a file long enough to overflow the serving peer's buffer, our
+peer continues to attack. By default, a peer responds to a connection from
+another peer by reading the request, getting the requested filename, opening
+the requested file, and then uploading the file's data. If the request is not
+formatted properly or the peer does not have the requested file, the peer's
+code exits. Our peer attacks by spamming properly-formatted requests to peers
+that have the requested file. If the peer uploads files in parallel, it will
+open a new file descriptor for each request...
+
+UPLOADER ATTACKS:
+
+Our peer attacks peers that request a file from us.
 
 
 # Extra credit problems
