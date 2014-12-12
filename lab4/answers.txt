@@ -87,7 +87,7 @@ Our peer seeks out new peers to attack.
 The skeleton code is susceptible to buffer overflow if a peer requests a file
 with a name that is longer than FILENAMESIZ-1 (see EXERCISE 2A above). Our peer
 sends a WANT request and receives a list of peers with that file. The normal
-process is to connect to that peer and send a GET request that specifies the
+process is to connect to a peer and send a GET request that specifies the
 filename. In evil mode, our peer sends a GET request with a filename that is
 LONGNAMESIZ bytes long, where LONGNAMESIZ > FILENAMESIZ-1. The serving peer
 copies the name into its filename buffer, thereby overflowing the buffer. The
@@ -101,12 +101,42 @@ another peer by reading the request, getting the requested filename, opening
 the requested file, and then uploading the file's data. If the request is not
 formatted properly or the peer does not have the requested file, the peer's
 code exits. Our peer attacks by spamming properly-formatted requests to peers
-that have the requested file. If the peer uploads files in parallel, it will
-open a new file descriptor for each request...
+that have the requested file. The formatting and filename are important to
+ensure the peer does not immediately close the connection. If the peer uploads
+files in parallel, it will open a new file descriptor for each request and
+begin uploading to that file descriptor. Eventually we will fill up the serving
+peer's file descriptor table. Once this happens, the peer can no longer connect
+to other peers to serve them files. Our next open_socket attempt will fail and
+we will begin to attack the next peer in the list. A peer we attack will close
+a connection and close the corresponding file descriptor once it finishes
+uploading or if an error occurs. If we want to keep the peer's file descriptor
+table full, we need to continue spamming requests in an infinite loop (right
+now, our code exits the loop once open_socket fails). To avoid tying up our own
+peer's resources, the infinite loop should be run in a child process.
 
 UPLOADER ATTACKS:
 
 Our peer attacks peers that request a file from us.
+
+If Peer 1 is serving a file to Peer 2, Peer 2 will continue to download data as
+long as Peer 1 is uploading data. Peer 2 also trusts that what Peer 1 uploads
+is the requested file. Our peer takes advantage of this behavior to fill up the
+disk of any peer that requests a file from us. In evil mode, instead of
+uploading the requested file, our peer repeatedly uploads a character buffer of
+garbage data. The recipient peer continues to download the data (which it
+trusts is the requested file) until its disk is full. Once this happens, the
+peer can no longer download data. Worse, the user of the machine can no longer
+add any data to disk (for example, the user cannot create a new file). Our peer
+stops uploading data once the write system call fails. Peers copy data from the
+task buffer to disk in TASKBUFSIZ chunks. The size of the garbage character
+buffer (GARBAGEBUFSIZ) is one-fourth of the default TASKBUFSIZ so that we don't
+write to the pipe faster than the receipient reads from it (i.e., so the pipe
+doesn't fill up). This ensures that the write system call will fail only when
+the recipient's disk is full; it will not fail prematurely due to a full pipe.
+
+The disk-filling attack is possible because the peer trusts us to upload the
+requested file. One other way to take advantage of this fact would be to upload
+a malicious file (such as a virus) instead of the requested file.
 
 
 # Extra credit problems
@@ -126,4 +156,8 @@ with the checksum that we saved before the download (within task_download).
 In order to obtain this second checksum, we need to compute it using the
 md5 functions that are provided in md5.h. 
 
+
 # Add any other information you'd like us to know below this line.
+
+Code for each task is marked with a comment like "// TASK 2" or
+"// EXTRA CREDIT TASK", for example.
